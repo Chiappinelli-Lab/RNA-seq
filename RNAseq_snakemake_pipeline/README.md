@@ -1,5 +1,5 @@
-# snakemake_pipelines
-This is a snake pipeline for RNA-seq analysis of repetitive element expression. The Pipeline steps are as follows:
+# RNA-seq snakemake pipeline
+This is a snakemake pipeline for RNA-seq analysis of repetitive element expression. The Pipeline steps are as follows:
 
 1. Initial QC - FastQC
 2. Adapter/read trimming -  cutadapt
