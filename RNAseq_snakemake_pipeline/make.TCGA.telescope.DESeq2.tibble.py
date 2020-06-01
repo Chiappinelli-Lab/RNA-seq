@@ -82,14 +82,8 @@ def make_output_names(filename, timestamp):
     out_prefix = split_filename[0] # add input filename to tibble name to prevent overwriting
     if args.out_name != "unspecified":
         out_prefix = args.out_name
-    # tibble_name = "".join([ out_dir, "/", out_prefix, ".DESeq", str(args.version), ".tibble.tsv" ])
     tibble_name = "".join([ out_dir, "/", out_prefix, ".DESeq", str(args.version), '.', timestamp, ".tibble.tsv" ])
     summary_data_name = "".join([ out_dir, "/", out_prefix, ".DESeq", str(args.version), '.', timestamp, ".summary_data.pdf" ])
-
-    # out_dir_files = os.listdir(out_dir)
-    # if os.path.basename(tibble_name) in out_dir_files:
-    #     print("WARNING!! Tibble output file already exists in output directory. Adding time stamp to prevent overwriting data.")
-    #     tibble_name = "".join([ out_dir, "/", timestamp, ".", out_prefix, ".DESeq", str(args.version), ".tibble.tsv" ])
 
     print("Tibble output to: {tibblepath}".format(tibblepath = tibble_name))
     print("Summary data output to: {datapath}".format(datapath = summary_data_name))
@@ -333,8 +327,6 @@ def main():
 
     # Prepare the variables and file names ahead of running the analysis
     log2fc_col, prob_col = set_fold_change_col()
-    # out_dir, tibble_name, summary_data_name = make_output_names(timestamp)
-    # tibble_handle = open(tibble_name, 'w')
 
     # If the user specified RepeatMasker annotation file (BEF format), get the class annotation
     re_classes = dict()
@@ -365,11 +357,6 @@ def main():
         else:
             print(filename, "is not a DESeq output file. Skipping")
             continue
-
-    # Goal is to use matplotlib to produce a violin plot of expression fold change for each sample.
-    # Also to figure out the total number of DE transcripts and output the number up, number down, and total.
-    # Would be nice if it could plot the up, down, and total counts for significant genes when applicable.
-    # But that will have to wait. Depends on how long testing and other projects take.
 
 if __name__ == "__main__":
     main()
