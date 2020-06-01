@@ -72,22 +72,24 @@ def set_fold_change_col():
     return log2fc_col, prob_col
 
 # Set the names for output files
-def make_output_names(timestamp):
+def make_output_names(filename, timestamp):
     out_dir = os.getcwd()
     if args.out_dir != "unspecified":
         out_dir = args.out_dir
     print("Output Directory: {dir_name}".format(dir_name = out_dir))
 
-    out_prefix = timestamp
+    split_filename = os.path.splitext(filename)
+    out_prefix = split_filename[0] # add input filename to tibble name to prevent overwriting
     if args.out_name != "unspecified":
         out_prefix = args.out_name
-    tibble_name = "".join([ out_dir, "/", out_prefix, ".DESeq", str(args.version), ".tibble.tsv" ])
-    summary_data_name = "".join([ out_dir, "/", out_prefix, ".DESeq", str(args.version), ".summary_data.pdf" ])
+    # tibble_name = "".join([ out_dir, "/", out_prefix, ".DESeq", str(args.version), ".tibble.tsv" ])
+    tibble_name = "".join([ out_dir, "/", out_prefix, ".DESeq", str(args.version), '.', timestamp, ".tibble.tsv" ])
+    summary_data_name = "".join([ out_dir, "/", out_prefix, ".DESeq", str(args.version), '.', timestamp, ".summary_data.pdf" ])
 
-    out_dir_files = os.listdir(out_dir)
-    if os.path.basename(tibble_name) in out_dir_files:
-        print("WARNING!! Tibble output file already exists in output directory. Adding time stamp to prevent overwriting data.")
-        tibble_name = "".join([ out_dir, "/", timestamp, ".", out_prefix, ".DESeq", str(args.version), ".tibble.tsv" ])
+    # out_dir_files = os.listdir(out_dir)
+    # if os.path.basename(tibble_name) in out_dir_files:
+    #     print("WARNING!! Tibble output file already exists in output directory. Adding time stamp to prevent overwriting data.")
+    #     tibble_name = "".join([ out_dir, "/", timestamp, ".", out_prefix, ".DESeq", str(args.version), ".tibble.tsv" ])
 
     print("Tibble output to: {tibblepath}".format(tibblepath = tibble_name))
     print("Summary data output to: {datapath}".format(datapath = summary_data_name))
@@ -231,10 +233,11 @@ def add_sample_info_to_ouput(output_line, input_file, sample_df, input_df_index,
             output_line = "\t".join([ output_line, col_string ])
     return output_line
 
-def make_graphs(tibble_file, filename, summary_data_name):
+def make_graphs(tibble_file, summary_data_name):
     # Open and read tibble file
-    print("In graph subroutine. Tibble file is:", tibble_file)
+    print("In graph subroutine. Tibble file is: ", tibble_file)
     tibble = pandas.read_csv(tibble_file, sep='\t', header=None)
+
     # Set tibble column index based on what arguments were specified since tibble doesn't have column headers
     if args.probability == "FALSE" and args.annotation == "unspecified":
         DE_trx_col = 3
@@ -262,7 +265,8 @@ def make_graphs(tibble_file, filename, summary_data_name):
         # Make plot
         plt.bar(range(len(bar_descriptor)), bar_heights, color=['red', 'dodgerblue', 'darkviolet'], align='center')
         plt.title('Differentially Expressed Transcripts', fontweight='bold', fontsize='14')
-        plt.xlabel('Data from file: {f}'.format(f=filename))
+        tibble_basename = os.path.basename(tibble_file) # get basename of tibble file to add to graph
+        plt.xlabel('Data from file: {f}'.format(f=tibble_basename), fontsize=8)
         plt.ylabel('Number of Transcripts')
         ax.xaxis.set_tick_params(labelsize=12)
         plt.xticks(range(len(bar_descriptor)), bar_descriptor)
@@ -285,7 +289,7 @@ def make_graphs(tibble_file, filename, summary_data_name):
 
         violin = ax1.violinplot(log2fc_values, showmeans=False, showmedians=False, showextrema=False)
         ax1.set_title('Expression Fold Change', fontweight='bold', fontsize='12')
-        ax1.set_xlabel('Data from file: {x}'.format(x=filename))
+        ax1.set_xlabel('Data from file: {x}'.format(x=tibble_basename), fontsize=8)
         ax1.set_ylabel('Log2(Fold Change)')
         ax1.set_xticks([])
 
@@ -329,8 +333,8 @@ def main():
 
     # Prepare the variables and file names ahead of running the analysis
     log2fc_col, prob_col = set_fold_change_col()
-    out_dir, tibble_name, summary_data_name = make_output_names(timestamp)
-    tibble_handle = open(tibble_name, 'w')
+    # out_dir, tibble_name, summary_data_name = make_output_names(timestamp)
+    # tibble_handle = open(tibble_name, 'w')
 
     # If the user specified RepeatMasker annotation file (BEF format), get the class annotation
     re_classes = dict()
@@ -351,24 +355,17 @@ def main():
     file_list = os.listdir(args.data_dir)
     for filename in file_list:
         if filename.endswith(args.suffix):
+            out_dir, tibble_name, summary_data_name = make_output_names(filename, timestamp)
+            tibble_handle = open(tibble_name, 'w')
             print("Processing: ", filename)
             make_tibble(filename, sample_df, use_samples, log2fc_col, tibble_handle, re_classes, prob_col)
+            tibble_handle.close() # close tibble handle before using it to make graphs
+            print("Graphing data from: ", tibble_name)
+            make_graphs(tibble_name, summary_data_name)
         else:
             print(filename, "is not a DESeq output file. Skipping")
             continue
 
-    # Make summary plots of DESeq data from tibble file
-    tibble_handle.close() # close file before opening
-    tibble_list = os.listdir(out_dir)
-    for file in tibble_list:
-        if file.endswith(".tibble.tsv"):
-            absolute_tibble_file = "/".join([out_dir, file ])
-            print("Graphing data from: ", absolute_tibble_file)
-            make_graphs(absolute_tibble_file, filename, summary_data_name)
-            print("Graphs constructed for: ", file)
-        else:
-            print(file, "is not a tibble file. Skipping")
-            continue
     # Goal is to use matplotlib to produce a violin plot of expression fold change for each sample.
     # Also to figure out the total number of DE transcripts and output the number up, number down, and total.
     # Would be nice if it could plot the up, down, and total counts for significant genes when applicable.
