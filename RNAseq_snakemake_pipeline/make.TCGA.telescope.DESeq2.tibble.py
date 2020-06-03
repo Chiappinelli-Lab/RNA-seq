@@ -243,7 +243,6 @@ def make_graphs(tibble_file, summary_data_name):
         DE_trx_col = 4
     else:
         print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
-    continue
 
     # Get number of differentially expressed transcripts, number of upregulated transcripts, and number of downregulated transcripts
     n_total_DE_transcripts = len(DE_transcripts[DE_transcripts.iloc[:,0].isin(['UP', 'DOWN'])])
