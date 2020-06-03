@@ -242,6 +242,7 @@ def make_graphs(tibble_file, summary_data_name):
     elif args.probability == "TRUE" and args.annotation != "unspecified":
         DE_trx_col = 4
     else:
+        DE_trx_col = 2
         print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
 
     # Get number of differentially expressed transcripts, number of upregulated transcripts, and number of downregulated transcripts
