@@ -42,9 +42,34 @@ TO DO:
 """
 
 import numpy as np
+import os.path
+from os import path
 
 #configfile: 'RNAseq_snakemake.config'
 localrules: Telescope_DESeq, make_sample_tables, Combine_tables_telescope, Combine_tables_TEtranscripts
+
+#### validate the config file ####
+# check that each field exists
+assert 'working_dir' in config, "Missing field in configfile -- 'working_dir'"
+assert 'raw_file_extension' in config, "Missing field in configfile -- 'raw_file_extension'"
+assert 'num_replicates' in config, "Missing field in configfile -- 'num_replicates'"
+assert 'control_sample' in config, "Missing field in configfile -- 'control_sample'"
+assert 'fw_adapter' in config, "Missing field in configfile -- 'fw_adapter'"
+assert 'rev_adapter' in config, "Missing field in configfile -- 'rev_adapter'"
+
+# Check that each field is filled in and properly formatted
+#working_dir
+assert len(config['working_dir']) > 0, "config file: Please provide a working directory."
+assert path.exists(config['working_dir']), "config file: working_dir " + config['working_dir'] + " does not exist."
+assert config['working_dir'].endswith('/'), "config file: working_dir must end in '/'!"
+#raw_file_extension
+assert len(config['raw_file_extension']) > 0, "config file: Please provide a raw file extension."
+assert config['raw_file_extension'].startswith('.') == False, "config file: raw_file_extension should not start with '.'"
+if config['raw_file_extension'].endswith('gz') == False: #just warn if it doesnt end in .gz -- files might still be gzipped
+	print("WARNING: config file: raw_file_extension does not end in '.gz'. Raw files must be gzipped!")
+#num_replicates
+assert len(config['num_replicates']) > 0, "config file: Please indicate the number of replicates."
+
 
 controlSample = config['control_sample']
 replicates = list(range(1, int(config['num_replicates']) + 1))
@@ -64,8 +89,8 @@ SAMPLE_IDS = list(SAMPLE_ID_set)
 print("starting Snakemake...")
 print("SAMPLE_IDS = " + str(SAMPLE_IDS))
 
-#run test to confirm SAMPLE_IDS exist
-assert len(SAMPLE_IDS) > 1, "< 1 sample found!"
+#validate SAMPLE_IDS exist
+assert len(SAMPLE_IDS) > 1, "no samples found!"
 
 rule all:
 	input:
@@ -170,7 +195,7 @@ rule Telescope_DESeq:
 	input:
 		treatment_reports = expand(working_dir + 'telescope/{{sample}}_{replicate}-telescope_report.tsv', replicate = replicates),
 		control_reports = expand(working_dir + 'telescope/' + controlSample + '_{replicate}-telescope_report.tsv', replicate = replicates),
-		script = '/groups/chiappinellilab/software/tkanholm/make.TCGA.telescope.DESeq2.input.filter.baseMean.10.py',
+		script = 'scripts/make.TCGA.telescope.DESeq2.input.filter.baseMean.10.py',
 		annotation = '/groups/chiappinellilab/genomes/hg38/HERV_L1_rmsk.hg38.gtf'
 	output:
 		treat_files_list = temp(working_dir + 'telescope/{sample}.treat_files.txt'),
@@ -234,7 +259,7 @@ rule Combine_tables_telescope:
 	input: 
 		telescope_files = expand(working_dir + 'telescope/{sample}.telescope.count.table.DESeq2.tsv', sample = SAMPLE_IDS),
 		sample_table = working_dir + 'telescope/sample_table.txt',
-		script = '/groups/chiappinellilab/software/jimcdonald/make.TCGA.telescope.DESeq2.tibble.py'
+		script = 'scripts/make.TCGA.telescope.DESeq2.tibble.py'
 	output: working_dir + 'all.samples.telescope.DESeq2.tibble.tsv'
 	params:
 		workingDir = working_dir
@@ -250,7 +275,7 @@ rule Combine_tables_TEtranscripts:
 	input: 
 		TEtranscripts_files = expand(working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_gene_TE_analysis.txt', sample = SAMPLE_IDS),
 		sample_table = working_dir + 'TEtranscripts/sample_table.txt',
-		script = '/groups/chiappinellilab/software/tkanholm/make.TCGA.telescope.DESeq2.tibble.py'
+		script = 'scripts/make.TCGA.telescope.DESeq2.tibble.py'
 	output: working_dir + 'all.samples.TEtranscripts.DESeq2.tibble.tsv'
 	params:
 		workingDir = working_dir
