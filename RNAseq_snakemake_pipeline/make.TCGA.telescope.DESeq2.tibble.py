@@ -18,7 +18,6 @@ import inspect # Lets me get line numbers
 # 1. Identify the DESeq output files.
 # 2. Create a tibble for manipulation in R containing data from all files.
 #    OPTIONAL INPUT: a sample file. Will allow additional data columns in the tibble.
-# 3. NOT IMPLEMENTED YET -- It will output some preliminary violin plots and bar graphs to give a summary of the data.
 # OPTIONAL INPUT: annotation file in GTF format. Source column must read: "rmsk", "l1base", or "RMSK_hg38_4.0.5"
 # CURRENTLY: Telescope ERVS have "rmsk" and LINEs have "l1base". TEtranscripts annotations have "RMSK_hg38_4.0.5".
 # Update this as annotation files evolve.
@@ -49,7 +48,7 @@ import inspect # Lets me get line numbers
 parser = argparse.ArgumentParser(description="Create a tibble from DESeq output and create some graphs for preliminary data visualization.")
 parser.add_argument("data_dir", type=str, help="Absolute file path for the directory containing the DESeq data to be analzyed.")
 parser.add_argument("-d", "--out_dir", type=str, default="unspecified", help="Directory for tibble and graph output. If not specified, output files are saved in current working directory.")
-parser.add_argument("-n", "--out_name", type=str, default="unspecified", help="Name for output files. If not specified, the name will be a timestamp.")
+parser.add_argument("-n", "--out_name", type=str, default="unspecified", help="Name for output files. If not specified, the name will contain the timestamp and the basename of the input file.")
 parser.add_argument("-v", "--version", type=int, default="2", choices=[1,2], help="DESeq version: 1 = DESeq; 2 = DESeq2. Default = 2.")
 parser.add_argument("-x", "--suffix", type=str, default="DESeq2.tsv", help="Tail end of DESeq2 output files. Used to identify files in a directory as correct input. 'Default = DESeq2.tsv'")
 parser.add_argument("-s", "--samples", type=str, default="unspecified", help="Optional file containing sample names and other descriptors to be added to the tibble. MUST INCLUDE: FULL INPUT FILE NAME WITH COLUMN LABEL OF 'DESeq_ouput_file'!! Should include a sample name also. If not used, the input file name will be left as the sample name. If included, sample name is assumed to be a column in the sample file.")
@@ -227,26 +226,43 @@ def add_sample_info_to_ouput(output_line, input_file, sample_df, input_df_index,
             output_line = "\t".join([ output_line, col_string ])
     return output_line
 
-def make_graphs(tibble_file, summary_data_name):
+def make_graphs(tibble_file, use_samples, summary_data_name):
     # Open and read tibble file
     print("In graph subroutine. Tibble file is: ", tibble_file)
     tibble = pandas.read_csv(tibble_file, sep='\t', header=None)
 
-    # Set tibble column index based on what arguments were specified since tibble doesn't have column headers
-    if args.probability == "FALSE" and args.annotation == "unspecified":
-        DE_trx_col = 2
-    elif args.probability == "TRUE" and args.annotation == "unspecified":
-        DE_trx_col = 3
-    elif args.probability == "FALSE" and args.annotation != "unspecified":
-        DE_trx_col = 3
-    elif args.probability == "TRUE" and args.annotation != "unspecified":
-        DE_trx_col = 4
+    # Set tibble column index based on what use_samples equals and what arguments were specified since tibble doesn't have column headers
+    if use_samples == 0:
+        if args.probability == "FALSE" and args.annotation == "unspecified":
+            DE_trx_col = 3
+        elif args.probability == "TRUE" and args.annotation == "unspecified":
+            DE_trx_col = 4
+        elif args.probability == "FALSE" and args.annotation != "unspecified":
+            DE_trx_col = 4
+        elif args.probability == "TRUE" and args.annotation != "unspecified":
+            DE_trx_col = 5
+        else:
+            print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
+        log2fc_trx_col = DE_trx_col-1
+    elif use_samples > 0:
+        if args.probability == "FALSE" and args.annotation == "unspecified":
+            DE_trx_col = 2
+        elif args.probability == "TRUE" and args.annotation == "unspecified":
+            DE_trx_col = 3
+        elif args.probability == "FALSE" and args.annotation != "unspecified":
+            DE_trx_col = 3
+        elif args.probability == "TRUE" and args.annotation != "unspecified":
+            DE_trx_col = 4
+        else:
+            print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
+        log2fc_trx_col = 1
     else:
         DE_trx_col = 2
+        log2fc_trx_col = 1
         print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
 
-    DE_transcripts = tibble.iloc[:, [DE_trx_col, 1]] # dataframe with column 1 = UP, DOWN, or no_change and column 2 = log2fc values
-        
+    DE_transcripts = tibble.iloc[:, [DE_trx_col, log2fc_trx_col]] # dataframe with column 1 = UP, DOWN, or no_change and column 2 = log2fc values
+
     # Get number of differentially expressed transcripts, number of upregulated transcripts, and number of downregulated transcripts
     n_total_DE_transcripts = len(DE_transcripts[DE_transcripts.iloc[:,0].isin(['UP', 'DOWN'])])
     n_upreg = len(DE_transcripts[DE_transcripts.iloc[:,0].isin(['UP'])])
@@ -329,7 +345,7 @@ def main():
     date=datetime.datetime.now()
     timestamp = date.strftime("%Y-%m-%d.%H:%M")
 
-    # Prepare the variables and file names ahead of running the analysis
+    # Prepare the variables ahead of running the analysis
     log2fc_col, prob_col = set_fold_change_col()
 
     # If the user specified RepeatMasker annotation file (BEF format), get the class annotation
@@ -357,10 +373,15 @@ def main():
             make_tibble(filename, sample_df, use_samples, log2fc_col, tibble_handle, re_classes, prob_col)
             tibble_handle.close() # close tibble handle before using it to make graphs
             print("Graphing data from: ", tibble_name)
-            make_graphs(tibble_name, summary_data_name)
+            make_graphs(tibble_name, use_samples, summary_data_name)
         else:
             print(filename, "is not a DESeq output file. Skipping")
             continue
+
+    # Goal is to use matplotlib to produce a violin plot of expression fold change for each sample.
+    # Also to figure out the total number of DE transcripts and output the number up, number down, and total.
+    # Would be nice if it could plot the up, down, and total counts for significant genes when applicable.
+    # But that will have to wait. Depends on how long testing and other projects take.
 
 if __name__ == "__main__":
     main()
