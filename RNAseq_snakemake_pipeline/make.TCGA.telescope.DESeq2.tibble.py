@@ -378,7 +378,8 @@ def main():
         else:
             print(filename, "is not a DESeq output file. Skipping")
             continue
-
+    
+    tibble_handle.close()
     make_graphs(tibble_name, use_samples, summary_data_name)
 
 if __name__ == "__main__":
