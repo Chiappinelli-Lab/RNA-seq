@@ -349,8 +349,10 @@ def main():
     date=datetime.datetime.now()
     timestamp = date.strftime("%Y-%m-%d.%H:%M")
 
-    # Prepare the variables ahead of running the analysis
+    # Prepare the variables and file names ahead of running the analysis
     log2fc_col, prob_col = set_fold_change_col()
+    out_dir, tibble_name, summary_data_name = make_output_names(timestamp)
+    tibble_handle = open(tibble_name, 'w')
 
     # If the user specified RepeatMasker annotation file (BEF format), get the class annotation
     re_classes = dict()
@@ -371,16 +373,13 @@ def main():
     file_list = os.listdir(args.data_dir)
     for filename in file_list:
         if filename.endswith(args.suffix):
-            out_dir, tibble_name, summary_data_name = make_output_names(timestamp)
-            tibble_handle = open(tibble_name, 'w')
             print("Processing: ", filename)
             make_tibble(filename, sample_df, use_samples, log2fc_col, tibble_handle, re_classes, prob_col)
-            tibble_handle.close() # close tibble handle before using it to make graphs
-            print("Graphing data from: ", tibble_name)
-            make_graphs(tibble_name, use_samples, summary_data_name)
         else:
             print(filename, "is not a DESeq output file. Skipping")
             continue
+
+    make_graphs(tibble_name, use_samples, summary_data_name)
 
 if __name__ == "__main__":
     main()
