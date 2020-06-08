@@ -209,10 +209,8 @@ def make_tibble(input_file, sample_df, use_samples, log2fc_col, tibble_handle, r
                 output_line = "\t".join([ output_line, 'sig' ])
             else:
                 output_line = "\t".join([ output_line, 'not_sig' ])
-            # Check for the sample file and add the appropriate data as needed.
+            # # Check for the sample file and add the appropriate data as needed.
             if use_samples > 0:
-                first_tab_index = output_line.find('\t') # Assuming sample name in file (see help above). So get index of first tab so I can remove filename
-                output_line = output_line[first_tab_index+1:] # Then actually remove the file name from the output
                 output_line = add_sample_info_to_ouput(output_line, input_file, sample_df, input_df_index, use_samples) # Then add the data from the sample file
             output_line = "".join([ output_line, '\n' ])
             tibble_handle.write(output_line)
@@ -235,111 +233,107 @@ def make_graphs(tibble_file, use_samples, summary_data_name):
     print("In graph subroutine. Tibble file is: ", tibble_file)
     tibble = pandas.read_csv(tibble_file, sep='\t', header=None)
 
-    # Set tibble column index based on what use_samples equals and what arguments were specified since tibble doesn't have column headers
-    if use_samples == 0:
-        if args.probability == "FALSE" and args.annotation == "unspecified":
-            DE_trx_col = 3
-        elif args.probability == "TRUE" and args.annotation == "unspecified":
-            DE_trx_col = 4
-        elif args.probability == "FALSE" and args.annotation != "unspecified":
-            DE_trx_col = 4
-        elif args.probability == "TRUE" and args.annotation != "unspecified":
-            DE_trx_col = 5
-        else:
-            print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
-        log2fc_trx_col = DE_trx_col-1
-    elif use_samples > 0:
-        if args.probability == "FALSE" and args.annotation == "unspecified":
-            DE_trx_col = 2
-        elif args.probability == "TRUE" and args.annotation == "unspecified":
-            DE_trx_col = 3
-        elif args.probability == "FALSE" and args.annotation != "unspecified":
-            DE_trx_col = 3
-        elif args.probability == "TRUE" and args.annotation != "unspecified":
-            DE_trx_col = 4
-        else:
-            print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
-        log2fc_trx_col = 1
-    else:
-        DE_trx_col = 2
-        log2fc_trx_col = 1
-        print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
+    # Get array of input filenames. Will be used to filter dataframe in order to create a bar chart & violin plot for each sample input file.
+    unique_filenames = tibble.iloc[:,0].unique()
 
-    DE_transcripts = tibble.iloc[:, [DE_trx_col, log2fc_trx_col]] # dataframe with column 1 = UP, DOWN, or no_change and column 2 = log2fc values
-
-    # Get number of differentially expressed transcripts, number of upregulated transcripts, and number of downregulated transcripts
-    n_total_DE_transcripts = len(DE_transcripts[DE_transcripts.iloc[:,0].isin(['UP', 'DOWN'])])
-    n_upreg = len(DE_transcripts[DE_transcripts.iloc[:,0].isin(['UP'])])
-    n_downreg = len(DE_transcripts[DE_transcripts.iloc[:,0].isin(['DOWN'])])
-
-    # create PDF to save plots in
+    # Create PDF to save plots in
     with PdfPages(summary_data_name) as pdf:
-        ### Create bar chart
-        fig, ax = plt.subplots()
 
-        bar_descriptor = ['Upregulated', 'Downregulated', 'Total']
-        bar_heights = [n_upreg, n_downreg, n_total_DE_transcripts]
-        width = 0.5 # width of bars
-        # Make plot
-        plt.bar(range(len(bar_descriptor)), bar_heights, color=['red', 'dodgerblue', 'darkviolet'], align='center')
-        plt.title('Differentially Expressed Transcripts', fontweight='bold', fontsize='14')
-        tibble_basename = os.path.basename(tibble_file) # get basename of tibble file to add to graph
-        plt.xlabel('Data from file: {f}'.format(f=tibble_basename), fontsize=8)
-        plt.ylabel('Number of Transcripts')
-        ax.xaxis.set_tick_params(labelsize=12)
-        plt.xticks(range(len(bar_descriptor)), bar_descriptor)
-        # Annotate bars with heights
-        for rect,i in zip(ax.patches, bar_heights):
-            ax.annotate('{:,}'.format(i),
-                            xy=(rect.get_x() + rect.get_width() / 2, rect.get_height()),
-                            xytext=(0, 2),  # 2 points vertical offset
-                            textcoords="offset points",
-                            ha='center', va='bottom', size='8', fontweight='bold')
-        plt.tight_layout()
-        pdf.savefig()
+        # Graphing code (will be enacted for each input file and output to a single pdf file)
+        for i in unique_filenames:
+            row_index = tibble.iloc[:,0] == i # boolean variable containing the rows that correspond to each input filename
+            tibble_by_filename = tibble[row_index] # group tibble by each unique filename
+            # Set tibble column index based on what use_samples equals and what arguments were specified since tibble doesn't have column headers
+            if use_samples == 0:
+                if args.probability == "FALSE" and args.annotation == "unspecified":
+                    DE_trx_col = 3
+                elif args.probability == "TRUE" and args.annotation == "unspecified":
+                    DE_trx_col = 4
+                elif args.probability == "FALSE" and args.annotation != "unspecified":
+                    DE_trx_col = 4
+                elif args.probability == "TRUE" and args.annotation != "unspecified":
+                    DE_trx_col = 5
+                else:
+                    print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
+                log2fc_trx_col = DE_trx_col-1
+            else:
+                DE_trx_col = 2
+                log2fc_trx_col = 1
+                print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
 
-        # Get log2fc values for each locus ID in DE_transcripts (contains transcripts only if they were up or downregulated)
-        log2fc_values = DE_transcripts.iloc[:,1].astype(float)
-        log2fc_values.dropna(inplace=True) # Get rid of NaNs or else plot won't work
+            DE_transcripts = tibble_by_filename.iloc[:, [DE_trx_col, log2fc_trx_col]] # dataframe with column 1 = UP, DOWN, or no_change and column 2 = log2fc values
 
-        ### Create violin plot
-        fig2, ax1 = plt.subplots()
+            # Get number of differentially expressed transcripts, number of upregulated transcripts, and number of downregulated transcripts
+            n_total_DE_transcripts = len(DE_transcripts[DE_transcripts.iloc[:,0].isin(['UP', 'DOWN'])])
+            n_upreg = len(DE_transcripts[DE_transcripts.iloc[:,0].isin(['UP'])])
+            n_downreg = len(DE_transcripts[DE_transcripts.iloc[:,0].isin(['DOWN'])])
 
-        violin = ax1.violinplot(log2fc_values, showmeans=False, showmedians=False, showextrema=False)
-        ax1.set_title('Expression Fold Change', fontweight='bold', fontsize='12')
-        ax1.set_xlabel('Data from file: {x}'.format(x=tibble_basename), fontsize=8)
-        ax1.set_ylabel('Log2(Fold Change)')
-        ax1.set_xticks([])
+            ### Create bar chart
+            fig, ax = plt.subplots()
 
-        # format body of violin
-        for v in violin['bodies']:
-            v.set_facecolor('deepskyblue')
-            v.set_edgecolor('black')
-            v.set_alpha(0.9)
+            bar_descriptor = ['Upregulated', 'Downregulated', 'Total']
+            bar_heights = [n_upreg, n_downreg, n_total_DE_transcripts]
+            width = 0.5 # width of bars
+            # Make plot
+            plt.bar(range(len(bar_descriptor)), bar_heights, color=['red', 'dodgerblue', 'darkviolet'], align='center')
+            plt.title('Differentially Expressed Transcripts', fontweight='bold', fontsize='14')
+            label_name = i.split('/') # split filename by / delimiter, will be used to annotate graphs
+            plt.xlabel('Data from file: {f}'.format(f=label_name[-1]), fontsize=8)
+            plt.ylabel('Number of Transcripts')
+            ax.xaxis.set_tick_params(labelsize=12)
+            plt.xticks(range(len(bar_descriptor)), bar_descriptor)
+            # Annotate bars with heights
+            for rect,v in zip(ax.patches, bar_heights):
+                ax.annotate('{:,}'.format(v),
+                                xy=(rect.get_x() + rect.get_width() / 2, rect.get_height()),
+                                xytext=(0, 2),  # 2 points vertical offset
+                                textcoords="offset points",
+                                ha='center', va='bottom', size='8', fontweight='bold')
+            plt.tight_layout()
+            pdf.savefig()
 
-        # get precentile values and plot box b/w first and third quartiles with white dot on median
-        quartile1, median, quartile3 = np.percentile(log2fc_values, [25, 50, 75])
-        ax1.scatter(1, median, marker='o', color='white', s=30, zorder=3)
-        ax1.vlines(1, quartile1, quartile3, color='k', linestyle='-', lw=7)
+            # Get log2fc values for each locus ID in DE_transcripts (contains transcripts only if they were up or downregulated)
+            log2fc_values = DE_transcripts.iloc[:,1].astype(float)
+            log2fc_values.dropna(inplace=True) # Get rid of NaNs or else plot won't work
 
-        # add thinner line using IQR to mark outliers
-        upper_bound = quartile3 + (quartile3 - quartile1) * 1.5
-        lower_bound = quartile1 - (quartile3 - quartile1) * 1.5
-        ax1.vlines(1, upper_bound, lower_bound, color='k', linestyle='-', lw=1)
+            ### Create violin plot
+            fig2, ax1 = plt.subplots()
 
-        # add text box to label percentile values
-        text = '\n'.join(('Minumim = {min:.2f}'.format(min=log2fc_values.min()),
-            '$1^{{st}}$ quartile = {q1:.2f}'.format(q1=quartile1),
-            'Median = {m:.2f}'.format(m=median),
-            '$3^{{rd}}$ quartile = {q3:.2f}'.format(q3=quartile3),
-            'Maximum = {max:.2f}'.format(max=log2fc_values.max())))
-        box_props = dict(boxstyle='square', facecolor='lightgray')
-        ax1.text(0.75, 5.25, text, bbox=box_props)
+            violin = ax1.violinplot(log2fc_values, showmeans=False, showmedians=False, showextrema=False)
+            ax1.set_title('Expression Fold Change', fontweight='bold', fontsize='12')
+            ax1.set_xlabel('Data from file: {x}'.format(x=label_name[-1]), fontsize=8)
+            ax1.set_ylabel('Log2(Fold Change)')
+            ax1.set_xticks([])
 
-        plt.tight_layout()
-        pdf.savefig()
+            # format body of violin
+            for v in violin['bodies']:
+                v.set_facecolor('deepskyblue')
+                v.set_edgecolor('black')
+                v.set_alpha(0.9)
 
-        plt.close()
+            # get precentile values and plot box b/w first and third quartiles with white dot on median
+            quartile1, median, quartile3 = np.percentile(log2fc_values, [25, 50, 75])
+            ax1.scatter(1, median, marker='o', color='white', s=30, zorder=3)
+            ax1.vlines(1, quartile1, quartile3, color='k', linestyle='-', lw=7)
+
+            # add thinner line using IQR to mark outliers
+            upper_bound = quartile3 + (quartile3 - quartile1) * 1.5
+            lower_bound = quartile1 - (quartile3 - quartile1) * 1.5
+            ax1.vlines(1, upper_bound, lower_bound, color='k', linestyle='-', lw=1)
+
+            # add text box to label percentile values
+            text = '\n'.join(('Minumim = {min:.2f}'.format(min=log2fc_values.min()),
+                '$1^{{st}}$ quartile = {q1:.2f}'.format(q1=quartile1),
+                'Median = {m:.2f}'.format(m=median),
+                '$3^{{rd}}$ quartile = {q3:.2f}'.format(q3=quartile3),
+                'Maximum = {max:.2f}'.format(max=log2fc_values.max())))
+            box_props = dict(boxstyle='square', facecolor='lightgray')
+            ax1.text(0.75, 5.25, text, bbox=box_props)
+
+            plt.tight_layout()
+            pdf.savefig()
+
+            plt.close()
 
     return(summary_data_name)
 
@@ -378,9 +372,16 @@ def main():
         else:
             print(filename, "is not a DESeq output file. Skipping")
             continue
-    
-    tibble_handle.close()
+
+    # Make graphs from tibble output
+    tibble_handle.close() # close tibble before graphing
     make_graphs(tibble_name, use_samples, summary_data_name)
+
+    # remove filename column used in graphing routine from tibble
+    tibble = pandas.read_csv(tibble_name, sep='\t', header=None)
+    tibble.drop([0], axis=1, inplace=True)
+    edited_tibble = tibble.to_csv(tibble_name, sep='\t', header=None, index=None)
+    tibble_handle.close()
 
 if __name__ == "__main__":
     main()
