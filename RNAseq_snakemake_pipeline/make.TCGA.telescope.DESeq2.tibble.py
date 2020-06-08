@@ -377,11 +377,13 @@ def main():
     tibble_handle.close() # close tibble before graphing
     make_graphs(tibble_name, use_samples, summary_data_name)
 
-    # remove filename column used in graphing routine from tibble
-    tibble = pandas.read_csv(tibble_name, sep='\t', header=None)
-    tibble.drop([0], axis=1, inplace=True)
-    edited_tibble = tibble.to_csv(tibble_name, sep='\t', header=None, index=None)
-    tibble_handle.close()
+    # remove filename column used in graphing routine from tibble if user specified sample names
+    if use_samples > 0:
+        tibble = pandas.read_csv(tibble_name, sep='\t', header=None)
+        tibble.drop([0], axis=1, inplace=True)
+        tibble.fillna('NA', inplace=True) # re-populate empty values with 'NA'
+        edited_tibble = tibble.to_csv(tibble_name, sep='\t', header=None, index=None)
+        tibble_handle.close()
 
 if __name__ == "__main__":
     main()
