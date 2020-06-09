@@ -257,8 +257,8 @@ def make_graphs(tibble_file, use_samples, summary_data_name):
                     print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
                 log2fc_trx_col = DE_trx_col-1
             else:
-                DE_trx_col = 2
-                log2fc_trx_col = 1
+                DE_trx_col = 3
+                log2fc_trx_col = 2
                 print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
 
             DE_transcripts = tibble_by_filename.iloc[:, [DE_trx_col, log2fc_trx_col]] # dataframe with column 1 = UP, DOWN, or no_change and column 2 = log2fc values
