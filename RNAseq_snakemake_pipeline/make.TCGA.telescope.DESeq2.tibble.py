@@ -254,12 +254,12 @@ def make_graphs(tibble_file, use_samples, summary_data_name):
                 elif args.probability == "TRUE" and args.annotation != "unspecified":
                     DE_trx_col = 5
                 else:
-                    print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
+                    print("Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
                 log2fc_trx_col = DE_trx_col-1
             else:
                 DE_trx_col = 3
                 log2fc_trx_col = 2
-                print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
+                print("Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
 
             DE_transcripts = tibble_by_filename.iloc[:, [DE_trx_col, log2fc_trx_col]] # dataframe with column 1 = UP, DOWN, or no_change and column 2 = log2fc values
 
@@ -299,7 +299,7 @@ def make_graphs(tibble_file, use_samples, summary_data_name):
             ### Create violin plot
             fig2, ax1 = plt.subplots()
 
-            violin = ax1.violinplot(log2fc_values, showmeans=False, showmedians=False, showextrema=False)
+            violin = ax1.violinplot(log2fc_values.values, showmeans=False, showmedians=False, showextrema=False)
             ax1.set_title('Expression Fold Change', fontweight='bold', fontsize='12')
             ax1.set_xlabel('Data from file: {x}'.format(x=label_name[-1]), fontsize=8)
             ax1.set_ylabel('Log2(Fold Change)')
