@@ -57,24 +57,32 @@ assert 'control_sample' in config, "Missing field in configfile -- 'control_samp
 assert 'fw_adapter' in config, "Missing field in configfile -- 'fw_adapter'"
 assert 'rev_adapter' in config, "Missing field in configfile -- 'rev_adapter'"
 
-# Check that each field is filled in and properly formatted
+# Check that each field is filled in and properly formatted and define python variables for config values where needed
 #working_dir
 assert len(config['working_dir']) > 0, "config file: Please provide a working directory."
 assert path.exists(config['working_dir']), "config file: working_dir " + config['working_dir'] + " does not exist."
 assert config['working_dir'].endswith('/'), "config file: working_dir must end in '/'!"
+working_dir = config['working_dir']
 #raw_file_extension
 assert len(config['raw_file_extension']) > 0, "config file: Please provide a raw file extension."
 assert config['raw_file_extension'].startswith('.') == False, "config file: raw_file_extension should not start with '.'"
 if config['raw_file_extension'].endswith('gz') == False: #just warn if it doesnt end in .gz -- files might still be gzipped
-	print("WARNING: config file: raw_file_extension does not end in '.gz'. Raw files must be gzipped!")
-#num_replicates
-assert len(config['num_replicates']) > 0, "config file: Please indicate the number of replicates."
-
-
-controlSample = config['control_sample']
-replicates = list(range(1, int(config['num_replicates']) + 1))
-working_dir = config['working_dir']
+	print("WARNING: config file: raw_file_extension does not end in 'gz'. Raw files must be gzipped!")
 raw_file_ext = config['raw_file_extension']
+#num_replicates
+assert isinstance(config['num_replicates'], int), "config file: num_replicates must be an integer number."
+assert config['num_replicates'] > 0, "config file: num_repliates must be at least 1 (single samples have 1 replicate)."
+replicates = list(range(1, int(config['num_replicates']) + 1)) 
+#control_sample
+assert len(config['control_sample']) > 0, "config file: Please designate a control sample."
+controlSample = config['control_sample']
+#fw_adapter
+#to-do: check that adapter sequence contains only ATGC characters (overkill?)
+assert len(config['fw_adapter']) > 0, "config file: Please provide a forward adapter sequence."
+#rev_adapter
+#to-do: check that adapter sequence contains only ATGC characters (overkill?)
+assert len(config['rev_adapter']) > 0, "config file: Please provide a reverse adapter sequence."
+
 
 #run test that config params are correct
 #run test on file naming convention
@@ -91,6 +99,13 @@ print("SAMPLE_IDS = " + str(SAMPLE_IDS))
 
 #validate SAMPLE_IDS exist
 assert len(SAMPLE_IDS) > 1, "no samples found!"
+
+# Check if outputs directory exists. If not, create it.
+outputs_path = working_dir + "outputs"
+if not path.exists(outputs_path):
+	print(outputs_path + " directory does not exist!")
+	os.mkdir(outputs_path) #hoping that python will handle the error itslef if the directory can not be created
+	print ("Successfully created the directory %s " % outputs_path)
 
 rule all:
 	input:
