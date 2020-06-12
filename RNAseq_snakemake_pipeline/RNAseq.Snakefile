@@ -32,41 +32,75 @@ snakemake -s RNAseq.Snakefile -j 100 --configfile RNAseq.Snakemake.config.yaml -
 	files.
 """
 
-
-"""
-TO DO:
-- test that config file values are correct
-- make output folder automagically
-- add functionality for single strand
-	- can this be done with a flag, or do we need a whole new pipeline?
-"""
-
 import numpy as np
+import os.path
+from os import path
 
-#configfile: 'RNAseq_snakemake.config'
 localrules: Telescope_DESeq, make_sample_tables, Combine_tables_telescope, Combine_tables_TEtranscripts
 
-controlSample = config['control_sample']
-replicates = list(range(1, int(config['num_replicates']) + 1))
+#### validate the config file ######################################################################
+# check that each field exists
+assert 'working_dir' in config, "Missing field in configfile -- 'working_dir'"
+assert 'raw_file_extension' in config, "Missing field in configfile -- 'raw_file_extension'"
+assert 'num_replicates' in config, "Missing field in configfile -- 'num_replicates'"
+assert 'control_sample' in config, "Missing field in configfile -- 'control_sample'"
+assert 'fw_adapter' in config, "Missing field in configfile -- 'fw_adapter'"
+assert 'rev_adapter' in config, "Missing field in configfile -- 'rev_adapter'"
+
+# Check that each field is filled in and properly formatted
+#working_dir
+assert len(config['working_dir']) > 0, "config file: Please provide a working directory."
+assert path.exists(config['working_dir']), "config file: working_dir " + config['working_dir'] + " does not exist."
+assert config['working_dir'].endswith('/'), "config file: working_dir must end in '/'!"
+#raw_file_extension
+assert len(config['raw_file_extension']) > 0, "config file: Please provide a raw file extension."
+assert config['raw_file_extension'].startswith('.') == False, "config file: raw_file_extension should not start with '.'"
+if config['raw_file_extension'].endswith('gz') == False: #just warn if it doesnt end in .gz -- files might still be gzipped
+	print("WARNING: config file: raw_file_extension does not end in 'gz'. Raw files must be gzipped!")
+#num_replicates
+assert isinstance(config['num_replicates'], int), "config file: num_replicates must be an integer number."
+assert config['num_replicates'] > 0, "config file: num_repliates must be at least 1 (single samples have 1 replicate)."
+#control_sample
+assert len(config['control_sample']) > 0, "config file: Please designate a control sample."
+#fw_adapter
+#to-do: check that adapter sequence contains only ATGC characters (overkill?)
+assert len(config['fw_adapter']) > 0, "config file: Please provide a forward adapter sequence."
+#rev_adapter
+#to-do: check that adapter sequence contains only ATGC characters (overkill?)
+assert len(config['rev_adapter']) > 0, "config file: Please provide a reverse adapter sequence."
+
+#put some of the config values into variables for convenience
 working_dir = config['working_dir']
 raw_file_ext = config['raw_file_extension']
+replicates = list(range(1, int(config['num_replicates']) + 1)) 
+controlSample = config['control_sample']
 
-#run test that config params are correct
-#run test on file naming convention
 
+# Check if outputs directory exists. If not, create it.
+outputs_path = working_dir + "outputs"
+if not path.exists(outputs_path):
+	print(outputs_path + " directory does not exist!")
+	os.mkdir(outputs_path) # hoping that python will handle the error itslef if the directory can not be created
+	print ("Successfully created the directory %s " % outputs_path)
+
+####################################################################################################
+
+print("Starting Snakemake...")
+
+#### Get sample IDs ################################################################################
 SAMPLE_IDS = glob_wildcards(working_dir + 'raw_files/{sample}_{replicate}_{read}.' + raw_file_ext).sample
-# this will grab multiple of the same SAMPLE_ID (one for each replicate/read combo). Grab just the unique ones
+# this will grab multiple of the same SAMPLE_ID (one for each replicate/read combo). We want just the unique ones
 # convert to a set (only takes unique values)
 SAMPLE_ID_set = set(SAMPLE_IDS)
 # convert back to a list
 SAMPLE_IDS = list(SAMPLE_ID_set)
 
-print("starting Snakemake...")
 print("SAMPLE_IDS = " + str(SAMPLE_IDS))
 
-#run test to confirm SAMPLE_IDS exist
-assert len(SAMPLE_IDS) > 1, "< 1 sample found!"
+#validate SAMPLE_IDS exist
+assert len(SAMPLE_IDS) > 1, "No samples found!"
 
+#### Rules ########################################################################################
 rule all:
 	input:
 		expand(working_dir + 'FastQC/{sample}_{replicate}_{read}_fastqc.html', sample = SAMPLE_IDS, replicate = replicates, read = ['R1','R2']),
@@ -202,7 +236,7 @@ rule make_sample_tables:
 		telescope_table = working_dir + 'telescope/sample_table.txt',
 		TEtranscripts_table = working_dir + 'TEtranscripts/sample_table.txt'
 	run:
-		## telescope sample table ##
+		## telescope sample table #####
 		# table header
 		table_str = "DESeq_output_file" + "\t" + "Sample_name" + "\n"
 
@@ -214,6 +248,7 @@ rule make_sample_tables:
 		print(table_str)
 		sample_table_file = open(output.telescope_table, "w")
 		sample_table_file.write(table_str)
+		################################
 
 		## TEtranscripts sample table ##
 		# table header
@@ -227,7 +262,7 @@ rule make_sample_tables:
 		print(table_str)
 		sample_table_file = open(output.TEtranscripts_table, "w")
 		sample_table_file.write(table_str)
-
+		################################
 
 
 rule Combine_tables_telescope:
@@ -250,7 +285,7 @@ rule Combine_tables_TEtranscripts:
 	input: 
 		TEtranscripts_files = expand(working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_gene_TE_analysis.txt', sample = SAMPLE_IDS),
 		sample_table = working_dir + 'TEtranscripts/sample_table.txt',
-		script = '/groups/chiappinellilab/software/tkanholm/make.TCGA.telescope.DESeq2.tibble.py'
+		script = '/groups/chiappinellilab/software/jimcdonald/make.TCGA.telescope.DESeq2.tibble.py'
 	output: working_dir + 'all.samples.TEtranscripts.DESeq2.tibble.tsv'
 	params:
 		workingDir = working_dir
