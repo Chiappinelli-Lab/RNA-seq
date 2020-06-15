@@ -239,27 +239,22 @@ def make_graphs(tibble_file, use_samples, summary_data_name):
     # Create PDF to save plots in
     with PdfPages(summary_data_name) as pdf:
 
-        # Graphing code (will be enacted for each input file and output to a single pdf file)
+                # Graphing code (will be enacted for each input file and output to a single pdf file)
         for i in unique_filenames:
             row_index = tibble.iloc[:,0] == i # boolean variable containing the rows that correspond to each input filename
             tibble_by_filename = tibble[row_index] # group tibble by each unique filename
-            # Set tibble column index based on what use_samples equals and what arguments were specified since tibble doesn't have column headers
-            if use_samples == 0:
-                if args.probability == "FALSE" and args.annotation == "unspecified":
-                    DE_trx_col = 3
-                elif args.probability == "TRUE" and args.annotation == "unspecified":
-                    DE_trx_col = 4
-                elif args.probability == "FALSE" and args.annotation != "unspecified":
-                    DE_trx_col = 4
-                elif args.probability == "TRUE" and args.annotation != "unspecified":
-                    DE_trx_col = 5
-                else:
-                    print("Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
-                log2fc_trx_col = DE_trx_col-1
-            else:
+            # Set tibble column index based on what arguments were specified since tibble doesn't have column headers
+            if args.probability == "FALSE" and args.annotation == "unspecified":
                 DE_trx_col = 3
-                log2fc_trx_col = 2
-                print("Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
+            elif args.probability == "TRUE" and args.annotation == "unspecified":
+                DE_trx_col = 4
+            elif args.probability == "FALSE" and args.annotation != "unspecified":
+                DE_trx_col = 4
+            elif args.probability == "TRUE" and args.annotation != "unspecified":
+                DE_trx_col = 5
+            else:
+                print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
+            log2fc_trx_col = DE_trx_col-1
 
             DE_transcripts = tibble_by_filename.iloc[:, [DE_trx_col, log2fc_trx_col]] # dataframe with column 1 = UP, DOWN, or no_change and column 2 = log2fc values
 
