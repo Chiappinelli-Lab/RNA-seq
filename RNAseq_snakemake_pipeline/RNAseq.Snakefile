@@ -49,11 +49,11 @@ assert 'rev_adapter' in config, "Missing field in configfile -- 'rev_adapter'"
 
 # Check that each field is filled in and properly formatted
 #working_dir
-assert len(config['working_dir']) > 0, "config file: Please provide a working directory."
+assert len(config['working_dir']) > 0, "config file: Please provide a working directory (working_dir)."
 assert path.exists(config['working_dir']), "config file: working_dir " + config['working_dir'] + " does not exist."
 assert config['working_dir'].endswith('/'), "config file: working_dir must end in '/'!"
 #raw_file_extension
-assert len(config['raw_file_extension']) > 0, "config file: Please provide a raw file extension."
+assert len(config['raw_file_extension']) > 0, "config file: Please provide a raw file extension (raw_file_extension)."
 assert config['raw_file_extension'].startswith('.') == False, "config file: raw_file_extension should not start with '.'"
 if config['raw_file_extension'].endswith('gz') == False: #just warn if it doesnt end in .gz -- files might still be gzipped
 	print("WARNING: config file: raw_file_extension does not end in 'gz'. Raw files must be gzipped!")
@@ -61,13 +61,29 @@ if config['raw_file_extension'].endswith('gz') == False: #just warn if it doesnt
 assert isinstance(config['num_replicates'], int), "config file: num_replicates must be an integer number."
 assert config['num_replicates'] > 0, "config file: num_repliates must be at least 1 (single samples have 1 replicate)."
 #control_sample
-assert len(config['control_sample']) > 0, "config file: Please designate a control sample."
+assert len(config['control_sample']) > 0, "config file: Please designate a control sample (control_sample)."
 #fw_adapter
 #to-do: check that adapter sequence contains only ATGC characters (overkill?)
-assert len(config['fw_adapter']) > 0, "config file: Please provide a forward adapter sequence."
+assert len(config['fw_adapter']) > 0, "config file: Please provide a forward adapter sequence (fw_adapter)."
 #rev_adapter
 #to-do: check that adapter sequence contains only ATGC characters (overkill?)
-assert len(config['rev_adapter']) > 0, "config file: Please provide a reverse adapter sequence."
+assert len(config['rev_adapter']) > 0, "config file: Please provide a reverse adapter sequence (rev_adapter)."
+
+#STAR_genomeDir
+assert len(config['STAR_genomeDir']) > 0, "config file: Please provide a STAR genome Directory (STAR_genomeDir)."
+assert path.exists(config['STAR_genomeDir']), "config file: STAR_genomeDir " + config['STAR_genomeDir'] + " does not exist."
+#working_dir
+assert len(config['STAR_GTF']) > 0, "config file: Please provide a STAR annotation file path (STAR_GTF)."
+assert path.exists(config['STAR_GTF']), "config file: STAR_GTF " + config['STAR_GTF'] + " does not exist."
+#working_dir
+assert len(config['TEtrx_GTF']) > 0, "config file: Please provide a TEtranscripts gene annotation file (TEtrx_GTF)."
+assert path.exists(config['TEtrx_GTF']), "config file: TEtrx_GTF " + config['TEtrx_GTF'] + " does not exist."
+#working_dir
+assert len(config['TEtrx_TE']) > 0, "config file: Please provide a TEtranscripts RE annotation file (TEtrx_TE)."
+assert path.exists(config['TEtrx_TE']), "config file: TEtrx_TE " + config['TEtrx_TE'] + " does not exist."
+#working_dir
+assert len(config['telescope_GTF']) > 0, "config file: Please provide a telescope annotation file (telescope_GTF)."
+assert path.exists(config['telescope_GTF']), "config file: telescope_GTF " + config['telescope_GTF'] + " does not exist."
 
 #put some of the config values into variables for convenience
 working_dir = config['working_dir']
@@ -161,8 +177,8 @@ rule STAR:
 	shell:
 		'''
 		ml star/2.6
-		STAR --runThreadN 16 --genomeDir /groups/chiappinellilab/genomes/hg38/STAR.hg38.index/ \
-		--sjdbGTFfile /groups/chiappinellilab/genomes/hg38/gencode.annotation/gencode.v21.primary.assembly.only.annotation.gtf \
+		STAR --runThreadN 16 --genomeDir {config[STAR_genomeDir]} \
+		--sjdbGTFfile {config[STAR_GTF]} \
 		--sjdbOverhang 100 \
 		--readFilesIn {input.read1} {input.read2} \
 		--readFilesCommand zcat --outSAMtype BAM Unsorted --winAnchorMultimapNmax 200 --outFilterMultimapNmax 100 --outFileNamePrefix RNAseq.STAR/RNAseq.STAR.{wildcards.sample}_{wildcards.replicate}.
@@ -181,8 +197,8 @@ rule TEtranscripts:
 		ml gcc/8.1.0
 		ml xz/5.2.3
 		TEtranscripts --format BAM --mode multi --stranded reverse -t {input.treatment_files} -c {input.control_files} \
-		--GTF /groups/chiappinellilab/genomes/hg38/gencode.annotation/gencode.v21.primary.assembly.only.annotation.gtf \
-		--TE /groups/chiappinellilab/genomes/hg38/RepeatMasker/rmsk.hg38.sorted.BOTHfeature.gtf \
+		--GTF {config[TEtrx_GTF]} \
+		--TE {config[TEtrx_TE]} \
 		--project TEtranscripts/{wildcards.sample}.TEtranscripts.DESeq
 
 		'''
@@ -195,7 +211,7 @@ rule Telescope:
 		ml miniconda
 		source activate telescope_env
 
-		telescope assign {input} /groups/chiappinellilab/genomes/hg38/HERV_L1_rmsk.hg38.gtf \
+		telescope assign {input} {config[telescope_GTF]} \
 		--outdir telescope/ --exp_tag {wildcards.sample}_{wildcards.replicate}
 
 		'''
@@ -205,7 +221,6 @@ rule Telescope_DESeq:
 		treatment_reports = expand(working_dir + 'telescope/{{sample}}_{replicate}-telescope_report.tsv', replicate = replicates),
 		control_reports = expand(working_dir + 'telescope/' + controlSample + '_{replicate}-telescope_report.tsv', replicate = replicates),
 		script = '/groups/chiappinellilab/software/tkanholm/make.TCGA.telescope.DESeq2.input.filter.baseMean.10.py',
-		annotation = '/groups/chiappinellilab/genomes/hg38/HERV_L1_rmsk.hg38.gtf'
 	output:
 		treat_files_list = temp(working_dir + 'telescope/{sample}.treat_files.txt'),
 		cntrl_files_list = temp(working_dir + 'telescope/{sample}.cntrl_files.txt'),
@@ -225,7 +240,7 @@ rule Telescope_DESeq:
 		ls {params.workingDir}telescope/*{params.cntrl_sample}*telescope_report.tsv > {output.cntrl_files_list}
 		
 		#  make the DESeq count table and generate a DESeq script
-		python {input.script} {output.cntrl_files_list} {output.treat_files_list} {input.annotation} {params.workingDir}telescope/ -o {wildcards.sample}.telescope.count.table
+		python {input.script} {output.cntrl_files_list} {output.treat_files_list} {config[telescope_gtF]} {params.workingDir}telescope/ -o {wildcards.sample}.telescope.count.table
 		# run the generated script
 		Rscript {output.DESeq2_script}
 
@@ -278,7 +293,7 @@ rule Combine_tables_telescope:
 		ml python
 		python {input.script} \
 		{params.workingDir}telescope/ \
-		-n all.samples.telescope -x .count.table.DESeq2.tsv -a /groups/chiappinellilab/genomes/hg38/HERV_L1_rmsk.hg38.gtf  \
+		-n all.samples.telescope -x .count.table.DESeq2.tsv -a {config[telescope_GTF]}  \
 		-p TRUE -s {input.sample_table}
 		'''
 rule Combine_tables_TEtranscripts:
