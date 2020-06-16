@@ -228,7 +228,7 @@ def add_sample_info_to_ouput(output_line, input_file, sample_df, input_df_index,
             output_line = "\t".join([ output_line, col_string ])
     return output_line
 
-def make_graphs(tibble_file, use_samples, summary_data_name):
+def make_graphs(tibble_file, summary_data_name):
     # Open and read tibble file
     print("In graph subroutine. Tibble file is: ", tibble_file)
     tibble = pandas.read_csv(tibble_file, sep='\t', header=None)
@@ -239,7 +239,7 @@ def make_graphs(tibble_file, use_samples, summary_data_name):
     # Create PDF to save plots in
     with PdfPages(summary_data_name) as pdf:
 
-                # Graphing code (will be enacted for each input file and output to a single pdf file)
+        # Graphing code (will be enacted for each input file and output to a single pdf file)
         for i in unique_filenames:
             row_index = tibble.iloc[:,0] == i # boolean variable containing the rows that correspond to each input filename
             tibble_by_filename = tibble[row_index] # group tibble by each unique filename
@@ -370,7 +370,7 @@ def main():
 
     # Make graphs from tibble output
     tibble_handle.close() # close tibble before graphing
-    make_graphs(tibble_name, use_samples, summary_data_name)
+    make_graphs(tibble_name, summary_data_name)
 
     # remove filename column used in graphing routine from tibble if user specified sample names
     if use_samples > 0:
