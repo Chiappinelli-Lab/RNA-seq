@@ -104,16 +104,21 @@ if not path.exists(outputs_path):
 print("Starting Snakemake...")
 
 #### Get sample IDs ################################################################################
-SAMPLE_IDS = glob_wildcards(working_dir + 'raw_files/{sample}_{replicate}.' + raw_file_ext).sample
+SAMPLE_IDS = glob_wildcards(working_dir + 'raw_files/{sample}_{replicate}_{read}.' + raw_file_ext).sample
 # this will grab multiple of the same SAMPLE_ID (one for each replicate/read combo). We want just the unique ones
 # convert to a set (only takes unique values)
 SAMPLE_ID_set = set(SAMPLE_IDS)
 # convert back to a list
 SAMPLE_IDS = list(SAMPLE_ID_set)
-SAMPLE_IDS_no_control = SAMPLE_IDS.copy()
-SAMPLE_IDS_no_control.remove(controlSample)
+# create list minus control
+SAMPLE_IDS_no_control = list()
+for sample in SAMPLE_IDS:
+    if controlSample in sample:
+         continue
+    SAMPLE_IDS_no_control.append(sample)
 
 print("SAMPLE_IDS = " + str(SAMPLE_IDS))
+print("SAMPLE_IDS_no_control = " + str(SAMPLE_IDS_no_control))
 
 #validate SAMPLE_IDS exist
 assert len(SAMPLE_IDS) > 1, "No samples found!"
