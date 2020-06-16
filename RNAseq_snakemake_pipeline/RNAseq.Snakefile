@@ -104,12 +104,14 @@ if not path.exists(outputs_path):
 print("Starting Snakemake...")
 
 #### Get sample IDs ################################################################################
-SAMPLE_IDS = glob_wildcards(working_dir + 'raw_files/{sample}_{replicate}_{read}.' + raw_file_ext).sample
+SAMPLE_IDS = glob_wildcards(working_dir + 'raw_files/{sample}_{replicate}.' + raw_file_ext).sample
 # this will grab multiple of the same SAMPLE_ID (one for each replicate/read combo). We want just the unique ones
 # convert to a set (only takes unique values)
 SAMPLE_ID_set = set(SAMPLE_IDS)
 # convert back to a list
 SAMPLE_IDS = list(SAMPLE_ID_set)
+SAMPLE_IDS_no_control = SAMPLE_IDS.copy()
+SAMPLE_IDS_no_control.remove(controlSample)
 
 print("SAMPLE_IDS = " + str(SAMPLE_IDS))
 
@@ -306,7 +308,7 @@ rule make_sample_tables:
 
 rule Combine_tables_telescope:
 	input: 
-		telescope_files = expand(working_dir + 'telescope/{sample}.telescope.count.table.DESeq2.tsv', sample = SAMPLE_IDS),
+		telescope_files = expand(working_dir + 'telescope/{sample}.telescope.count.table.DESeq2.tsv', sample = SAMPLE_IDS_no_control),
 		sample_table = working_dir + 'telescope/sample_table.txt',
 		script = '/groups/chiappinellilab/software/jimcdonald/make.TCGA.telescope.DESeq2.tibble.py'
 	output: working_dir + 'all.samples.telescope.DESeq2.tibble.tsv'
@@ -323,7 +325,7 @@ rule Combine_tables_telescope:
 		'''
 rule Combine_tables_TEtranscripts:
 	input: 
-		TEtranscripts_files = expand(working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_gene_TE_analysis.txt', sample = SAMPLE_IDS),
+		TEtranscripts_files = expand(working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_gene_TE_analysis.txt', sample = SAMPLE_IDS_no_control),
 		sample_table = working_dir + 'TEtranscripts/sample_table.txt',
 		script = '/groups/chiappinellilab/software/jimcdonald/make.TCGA.telescope.DESeq2.tibble.py'
 	output: working_dir + 'all.samples.TEtranscripts.DESeq2.tibble.tsv'
