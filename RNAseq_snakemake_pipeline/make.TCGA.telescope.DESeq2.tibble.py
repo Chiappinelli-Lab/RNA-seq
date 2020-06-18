@@ -170,7 +170,6 @@ def make_tibble(input_file, sample_df, use_samples, log2fc_col, tibble_handle, r
         if len(input_df_index) == 0:
             print("WARNING!! The file {filename} does not have an exact match in the sample file. No additional information added for this file.".format(filename = input_file))
             use_samples == 2 # This will trigger addition of NA values to the tibble for these fields so the table still matches with samples that have the information
-
     # Get each line in the DESeq output, add relevant data, and print to the tibble
     absolute_input_file = "/".join([ args.data_dir, input_file ])
     with open(absolute_input_file) as input_file:
@@ -231,10 +230,14 @@ def add_sample_info_to_ouput(output_line, input_file, sample_df, input_df_index,
 def make_graphs(tibble_file, summary_data_name):
     # Open and read tibble file
     print("In graph subroutine. Tibble file is: ", tibble_file)
-    tibble = pandas.read_csv(tibble_file, sep='\t', header=None)
+    tibble = pandas.read_csv(tibble_file, sep='\t', header=0)
 
     # Get array of input filenames. Will be used to filter dataframe in order to create a bar chart & violin plot for each sample input file.
     unique_filenames = tibble.iloc[:,0].unique()
+
+    # Get index of the expr_change column
+    DE_trx_col = tibble.columns.get_loc("expr_change")
+    log2fc_trx_col = tibble.columns.get_loc("log2fc")
 
     # Create PDF to save plots in
     with PdfPages(summary_data_name) as pdf:
@@ -244,17 +247,17 @@ def make_graphs(tibble_file, summary_data_name):
             row_index = tibble.iloc[:,0] == i # boolean variable containing the rows that correspond to each input filename
             tibble_by_filename = tibble[row_index] # group tibble by each unique filename
             # Set tibble column index based on what arguments were specified since tibble doesn't have column headers
-            if args.probability == "FALSE" and args.annotation == "unspecified":
-                DE_trx_col = 3
-            elif args.probability == "TRUE" and args.annotation == "unspecified":
-                DE_trx_col = 4
-            elif args.probability == "FALSE" and args.annotation != "unspecified":
-                DE_trx_col = 4
-            elif args.probability == "TRUE" and args.annotation != "unspecified":
-                DE_trx_col = 5
-            else:
-                print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
-            log2fc_trx_col = DE_trx_col-1
+            # if args.probability == "FALSE" and args.annotation == "unspecified":
+            #     DE_trx_col = 3
+            # elif args.probability == "TRUE" and args.annotation == "unspecified":
+            #     DE_trx_col = 4
+            # elif args.probability == "FALSE" and args.annotation != "unspecified":
+            #     DE_trx_col = 4
+            # elif args.probability == "TRUE" and args.annotation != "unspecified":
+            #     DE_trx_col = 5
+            # else:
+            #     print("WARNING!! Using column index {index} to determine how many genes were upregulated, downregulated, or had no change in expression from tibble file {file}".format(index= DE_trx_col, file = tibble_file))
+            # log2fc_trx_col = DE_trx_col-1
 
             DE_transcripts = tibble_by_filename.iloc[:, [DE_trx_col, log2fc_trx_col]] # dataframe with column 1 = UP, DOWN, or no_change and column 2 = log2fc values
 
@@ -356,6 +359,25 @@ def main():
     else:
         print("No sample file specified by user. Sample name in tibble will be input file name.")
         use_samples = 0
+
+    # Create header for the tibble
+    # Create the header (first line)
+    header = "\t".join(["file_name", "locus_id", "log2fc"])
+    if args.probability == "TRUE":
+        header = "\t".join([ header, "padj" ])
+    if args.annotation != "unspecified":
+        header = "\t".join([ header, "re_class" ])
+    header = "\t".join([ header, "expr_change", "significance" ])
+    if use_samples > 0:
+        for column in sample_df.columns:
+            if column == 'DESeq_output_file': # Skip the file name (it gets erased later)
+                continue
+            else:
+                header = "\t".join([ header, str(column) ])
+    print(header)
+    header = "".join([ header, '\n' ])
+    tibble_handle.write(header)
+
 
     # Process the DESeq data in the folder and make a tibble data frame.
     # Each sample will create a data frame and then append it to the file.
