@@ -110,8 +110,15 @@ SAMPLE_IDS = glob_wildcards(working_dir + 'raw_files/{sample}_{replicate}_{read}
 SAMPLE_ID_set = set(SAMPLE_IDS)
 # convert back to a list
 SAMPLE_IDS = list(SAMPLE_ID_set)
+# create list minus control
+SAMPLE_IDS_no_control = list()
+for sample in SAMPLE_IDS:
+    if controlSample in sample:
+         continue
+    SAMPLE_IDS_no_control.append(sample)
 
 print("SAMPLE_IDS = " + str(SAMPLE_IDS))
+print("SAMPLE_IDS_no_control = " + str(SAMPLE_IDS_no_control))
 
 #validate SAMPLE_IDS exist
 assert len(SAMPLE_IDS) > 1, "No samples found!"
@@ -137,6 +144,7 @@ rule FastQC:
 	output:
 		working_dir + 'FastQC/{sample}_{replicate}_{read}_fastqc.html',
 		working_dir + 'FastQC/{sample}_{replicate}_{read}_fastqc.zip'
+	log: 'logs/FastQC.{sample}_{replicate}_{read}.log'
 	shell:
 		'''
 		ml fastQC/0.11.5 &&
@@ -148,7 +156,9 @@ rule CutAdapt:
 		read2 = working_dir + 'raw_files/{sample}_{replicate}_R2.' + raw_file_ext
 	output:
 		read1 = working_dir + 'cutadapt/{sample}_{replicate}_R1.cutadapt.q20.minlen1.' + raw_file_ext,
-		read2 = working_dir + 'cutadapt/{sample}_{replicate}_R2.cutadapt.q20.minlen1.' + raw_file_ext
+		read2 = working_dir + 'cutadapt/{sample}_{replicate}_R2.cutadapt.q20.minlen1.' + raw_file_ext,
+		report = working_dir + 'cutadapt/{sample}_{replicate}.cutadapt.report.txt'
+	log: 'logs/CutAdapt.{sample}_{replicate}.log'
 	shell:
 		'''
 		ml python/2.7.6
@@ -162,6 +172,7 @@ rule FastQC_pass2:
 	output:
 	  working_dir + 'FastQC_2/{sample}_{replicate}_{read}.cutadapt.q20.minlen1_fastqc.html',
 	  working_dir + 'FastQC_2/{sample}_{replicate}_{read}.cutadapt.q20.minlen1_fastqc.zip'
+	log: 'logs/FastQC_2.{sample}_{replicate}_{read}.log'
 	shell:
 		'''
 		ml fastQC/0.11.5 &&
@@ -173,7 +184,19 @@ rule STAR:
 		read1 = working_dir + 'cutadapt/{sample}_{replicate}_R1.cutadapt.q20.minlen1.' + raw_file_ext,
 		read2 = working_dir + 'cutadapt/{sample}_{replicate}_R2.cutadapt.q20.minlen1.' + raw_file_ext
 	output:
-		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}.Aligned.out.bam'
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}.Aligned.out.bam',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}.Log.final.out',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}.Log.out',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}.Log.progress.out',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}.SJ.out.tab',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}._STARgenome/exonGeTrInfo.tab',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}._STARgenome/exonInfo.tab',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}._STARgenome/geneInfo.tab',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}._STARgenome/sjdbInfo.txt',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}._STARgenome/sjdbList.fromGTF.out.tab',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}._STARgenome/sjdbList.out.tab',
+		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}._STARgenome/transcriptInfo.tab'
+	log: 'logs/STAR.{sample}_{replicate}.log'
 	shell:
 		'''
 		ml star/2.6
@@ -189,7 +212,12 @@ rule TEtranscripts:
 	input: 
 		treatment_files = expand(working_dir + 'RNAseq.STAR/RNAseq.STAR.{{sample}}_{replicate}.Aligned.out.bam', replicate = replicates),
 		control_files = expand(working_dir + 'RNAseq.STAR/RNAseq.STAR.' + controlSample + '_{replicate}.Aligned.out.bam', replicate = replicates)
-	output: working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_gene_TE_analysis.txt'
+	output:
+		working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_gene_TE_analysis.txt',
+		working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq.cntTable',
+		working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_DESeq2.R',
+		working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_sigdiff_gene_TE.txt'
+	log: 'logs/TEtranscripts.{sample}.log'
 	shell:
 		'''
 		ml python/2.7.6
@@ -206,6 +234,7 @@ rule TEtranscripts:
 rule Telescope:
 	input: working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}.Aligned.out.bam'
 	output: working_dir + 'telescope/{sample}_{replicate}-telescope_report.tsv'
+	log: 'logs/Telescope.{sample}_{replicate}.log'
 	shell:
 		'''
 		ml miniconda
@@ -230,6 +259,7 @@ rule Telescope_DESeq:
 	params:
 		cntrl_sample = controlSample,
 		workingDir = working_dir
+	log: 'logs/Telescope_DESeq.{sample}.log'
 	shell:
 		'''
 		ml python
@@ -240,7 +270,7 @@ rule Telescope_DESeq:
 		ls {params.workingDir}telescope/*{params.cntrl_sample}*telescope_report.tsv > {output.cntrl_files_list}
 		
 		#  make the DESeq count table and generate a DESeq script
-		python {input.script} {output.cntrl_files_list} {output.treat_files_list} {config[telescope_gtF]} {params.workingDir}telescope/ -o {wildcards.sample}.telescope.count.table
+		python {input.script} {output.cntrl_files_list} {output.treat_files_list} {config[telescope_GTF]} {params.workingDir}telescope/ -o {wildcards.sample}.telescope.count.table
 		# run the generated script
 		Rscript {output.DESeq2_script}
 
@@ -250,6 +280,7 @@ rule make_sample_tables:
 	output:
 		telescope_table = working_dir + 'telescope/sample_table.txt',
 		TEtranscripts_table = working_dir + 'TEtranscripts/sample_table.txt'
+	log: 'logs/make_sample_tables.log'
 	run:
 		## telescope sample table #####
 		# table header
@@ -282,12 +313,13 @@ rule make_sample_tables:
 
 rule Combine_tables_telescope:
 	input: 
-		telescope_files = expand(working_dir + 'telescope/{sample}.telescope.count.table.DESeq2.tsv', sample = SAMPLE_IDS),
+		telescope_files = expand(working_dir + 'telescope/{sample}.telescope.count.table.DESeq2.tsv', sample = SAMPLE_IDS_no_control),
 		sample_table = working_dir + 'telescope/sample_table.txt',
 		script = '/groups/chiappinellilab/software/jimcdonald/make.TCGA.telescope.DESeq2.tibble.py'
 	output: working_dir + 'all.samples.telescope.DESeq2.tibble.tsv'
 	params:
 		workingDir = working_dir
+	log: 'logs/Combine_tables_telescope.log'
 	shell:
 		'''
 		ml python
@@ -298,12 +330,13 @@ rule Combine_tables_telescope:
 		'''
 rule Combine_tables_TEtranscripts:
 	input: 
-		TEtranscripts_files = expand(working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_gene_TE_analysis.txt', sample = SAMPLE_IDS),
+		TEtranscripts_files = expand(working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_gene_TE_analysis.txt', sample = SAMPLE_IDS_no_control),
 		sample_table = working_dir + 'TEtranscripts/sample_table.txt',
 		script = '/groups/chiappinellilab/software/jimcdonald/make.TCGA.telescope.DESeq2.tibble.py'
 	output: working_dir + 'all.samples.TEtranscripts.DESeq2.tibble.tsv'
 	params:
 		workingDir = working_dir
+	log: 'logs/Combine_tables_TEtranscripts.log'
 	shell:
 		'''
 		ml python
