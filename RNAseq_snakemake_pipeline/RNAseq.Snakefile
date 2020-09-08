@@ -249,7 +249,7 @@ rule Telescope_DESeq:
 	input:
 		treatment_reports = expand(working_dir + 'telescope/{{sample}}_{replicate}-telescope_report.tsv', replicate = replicates),
 		control_reports = expand(working_dir + 'telescope/' + controlSample + '_{replicate}-telescope_report.tsv', replicate = replicates),
-		script = '/groups/chiappinellilab/software/tkanholm/make.TCGA.telescope.DESeq2.input.filter.baseMean.10.py',
+		script = 'scripts/make.telescope.DESeq2.input.filter.baseMean.10.py',
 	output:
 		treat_files_list = temp(working_dir + 'telescope/{sample}.treat_files.txt'),
 		cntrl_files_list = temp(working_dir + 'telescope/{sample}.cntrl_files.txt'),
@@ -315,7 +315,7 @@ rule Combine_tables_telescope:
 	input: 
 		telescope_files = expand(working_dir + 'telescope/{sample}.telescope.count.table.DESeq2.tsv', sample = SAMPLE_IDS_no_control),
 		sample_table = working_dir + 'telescope/sample_table.txt',
-		script = '/groups/chiappinellilab/software/jimcdonald/make.TCGA.telescope.DESeq2.tibble.py'
+		script = 'scripts/combine.tables.plot.data.py'
 	output: working_dir + 'all.samples.telescope.DESeq2.tibble.tsv'
 	params:
 		workingDir = working_dir
@@ -332,7 +332,7 @@ rule Combine_tables_TEtranscripts:
 	input: 
 		TEtranscripts_files = expand(working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_gene_TE_analysis.txt', sample = SAMPLE_IDS_no_control),
 		sample_table = working_dir + 'TEtranscripts/sample_table.txt',
-		script = '/groups/chiappinellilab/software/jimcdonald/make.TCGA.telescope.DESeq2.tibble.py'
+		script = 'scripts/combine.tables.plot.data.py'
 	output: working_dir + 'all.samples.TEtranscripts.DESeq2.tibble.tsv'
 	params:
 		workingDir = working_dir
