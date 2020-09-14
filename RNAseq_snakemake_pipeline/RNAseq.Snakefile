@@ -147,7 +147,7 @@ rule FastQC:
 	log: 'logs/FastQC.{sample}_{replicate}_{read}.log'
 	shell:
 		'''
-		ml fastQC/0.11.5 &&
+		ml fastQC/0.11.8 &&
 				fastqc -o FastQC {input}
 		'''
 rule CutAdapt:
@@ -175,7 +175,7 @@ rule FastQC_pass2:
 	log: 'logs/FastQC_2.{sample}_{replicate}_{read}.log'
 	shell:
 		'''
-		ml fastQC/0.11.5 &&
+		ml fastQC/0.11.8 &&
 			fastqc -o FastQC_2 {input}
 		'''
 
@@ -199,7 +199,7 @@ rule STAR:
 	log: 'logs/STAR.{sample}_{replicate}.log'
 	shell:
 		'''
-		ml star/2.6
+		ml star/2.7.0e
 		STAR --runThreadN 16 --genomeDir {config[STAR_genomeDir]} \
 		--sjdbGTFfile {config[STAR_GTF]} \
 		--sjdbOverhang 100 \
@@ -221,8 +221,8 @@ rule TEtranscripts:
 	shell:
 		'''
 		ml python/2.7.6
-		ml R/3.4.2
-		ml gcc/8.1.0
+		ml R/3.4.4
+		#ml gcc/8.1.0 #no longer need to re-load gcc after loading R on pegasus 
 		ml xz/5.2.3
 		TEtranscripts --format BAM --mode multi --stranded reverse -t {input.treatment_files} -c {input.control_files} \
 		--GTF {config[TEtrx_GTF]} \
@@ -263,8 +263,8 @@ rule Telescope_DESeq:
 	shell:
 		'''
 		ml python
-		ml R/3.4.2
-		ml gcc/8.1.0
+		ml R/3.4.4
+		#ml gcc/8.1.0 no longer need to re-load gcc after loading R
 
 		ls {params.workingDir}telescope/*{wildcards.sample}*telescope_report.tsv > {output.treat_files_list}
 		ls {params.workingDir}telescope/*{params.cntrl_sample}*telescope_report.tsv > {output.cntrl_files_list}
