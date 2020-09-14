@@ -4,8 +4,8 @@ num_replicates: # integer number of replicates
 control_sample: 
 fw_adapter:  #Illumina universal forward adapter: long - AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC (short - AGATCGGAAG)
 rev_adapter:  #Illumina universal reverse adapter: long - AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT (short - AGATCGGAAG)
-STAR_genomeDir: /groups/chiappinellilab/genomes/hg38/STAR.hg38.index/ # --genomeDir option in STAR command
-STAR_GTF: /groups/chiappinellilab/genomes/hg38/gencode.annotation/gencode.v21.primary.assembly.only.annotation.gtf # --sjdbGTFfile option in STAR command
-TEtrx_GTF: /groups/chiappinellilab/genomes/hg38/gencode.annotation/gencode.v21.primary.assembly.only.annotation.gtf # --GTF option in TEtranscripts command (gene annotation file path)
-TEtrx_TE: /groups/chiappinellilab/genomes/hg38/RepeatMasker/rmsk.hg38.sorted.BOTHfeature.gtf # --TE option in TEtranscripts command (RE annotation file path)
-telescope_GTF: /groups/chiappinellilab/genomes/hg38/HERV_L1_rmsk.hg38.gtf # telescope annotation file path
+STAR_genomeDir: /SMHS/groups/chiappinellilab/genomes/hg38/STAR.hg38.index/ # --genomeDir option in STAR command
+STAR_GTF: /SMHS/groups/chiappinellilab/genomes/hg38/gencode.annotation/gencode.v21.primary.assembly.only.annotation.gtf # --sjdbGTFfile option in STAR command
+TEtrx_GTF: /SMHS/groups/chiappinellilab/genomes/hg38/gencode.annotation/gencode.v21.primary.assembly.only.annotation.gtf # --GTF option in TEtranscripts command (gene annotation file path)
+TEtrx_TE: /SMHS/groups/chiappinellilab/genomes/hg38/RepeatMasker/rmsk.hg38.sorted.BOTHfeature.gtf # --TE option in TEtranscripts command (RE annotation file path)
+telescope_GTF: /SMHS/groups/chiappinellilab/genomes/hg38/HERV_L1_rmsk.hg38.gtf # telescope annotation file path
