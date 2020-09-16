@@ -223,7 +223,7 @@ rule TEtranscripts:
 		ml python/2.7.6
 		ml R/3.4.4
 		#ml gcc/8.1.0 #no longer need to re-load gcc after loading R on pegasus 
-		ml xz/5.2.3
+		ml xz/5.2.5
 		TEtranscripts --format BAM --mode multi --stranded reverse -t {input.treatment_files} -c {input.control_files} \
 		--GTF {config[TEtrx_GTF]} \
 		--TE {config[TEtrx_TE]} \
