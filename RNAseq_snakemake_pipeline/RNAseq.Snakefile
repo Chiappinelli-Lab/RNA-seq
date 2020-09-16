@@ -161,7 +161,7 @@ rule CutAdapt:
 	log: 'logs/CutAdapt.{sample}_{replicate}.log'
 	shell:
 		'''
-		ml python/2.7.6
+		ml python/2.7.16
 
 		cutadapt -a {config[fw_adapter]} -A {config[rev_adapter]} -q 20 --minimum-length 1 -o {output.read1} -p {output.read2} {input.read1} {input.read2} > cutadapt/{wildcards.sample}_{wildcards.replicate}.cutadapt.report.txt
 		'''
@@ -220,7 +220,7 @@ rule TEtranscripts:
 	log: 'logs/TEtranscripts.{sample}.log'
 	shell:
 		'''
-		ml python/2.7.6
+		ml python/2.7.16
 		ml R/3.4.4
 		#ml gcc/8.1.0 #no longer need to re-load gcc after loading R on pegasus 
 		ml xz/5.2.5
