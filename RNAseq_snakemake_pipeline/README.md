@@ -38,4 +38,5 @@ This is a snakemake pipeline for RNA-seq analysis of repetitive element expressi
 snakemake -s RNAseq.Snakefile -j 100 --use-conda --configfile RNAseq.Snakemake.config.yaml --cluster-config RNAseq.Snakemake.cluster.config.yaml --cluster "sbatch -o {cluster.output} -e {cluster.err} -p {cluster.p} -N {cluster.N} -J {cluster.jobName} -t {cluster.time} --mail-user={cluster.mail-user} --mail-type={cluster.mail-type}"
 ```
 Note: If running the single end version of the script, change the `-s RNAseq.Snakefile` argument to `-s RNAseq_singleEnd.Snakefile`
-4. Snakemake will create two `sample_table.txt` files located in `telescope/` and `TEtranscripts/`. Add columns to these files with any extra information about each sample. These will appear as extra columns in the final `all.samples.DESeq2.tibble.tsv files`.
+
+4. Snakemake will create two `sample_table.txt` files located in `telescope/` and `TEtranscripts/`. Add columns to these files with any extra information about each sample. These will appear as extra columns in the final `all.samples.DESeq2.tibble.tsv` files.
