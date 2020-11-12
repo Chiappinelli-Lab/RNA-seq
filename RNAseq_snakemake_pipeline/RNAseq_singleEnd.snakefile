@@ -64,10 +64,6 @@ assert len(config['control_sample']) > 0, "config file: Please designate a contr
 #fw_adapter
 #to-do: check that adapter sequence contains only ATGC characters (overkill?)
 assert len(config['fw_adapter']) > 0, "config file: Please provide a forward adapter sequence (fw_adapter)."
-#rev_adapter
-#to-do: check that adapter sequence contains only ATGC characters (overkill?)
-assert len(config['rev_adapter']) > 0, "config file: Please provide a reverse adapter sequence (rev_adapter)."
-
 #STAR_genomeDir
 assert len(config['STAR_genomeDir']) > 0, "config file: Please provide a STAR genome Directory (STAR_genomeDir)."
 assert path.exists(config['STAR_genomeDir']), "config file: STAR_genomeDir " + config['STAR_genomeDir'] + " does not exist."
@@ -87,7 +83,7 @@ assert path.exists(config['telescope_GTF']), "config file: telescope_GTF " + con
 #put some of the config values into variables for convenience
 working_dir = config['working_dir']
 raw_file_ext = config['raw_file_extension']
-replicates = list(range(1, int(config['num_replicates']) + 1)) 
+replicates = list(range(1, int(config['num_replicates']) + 1))
 controlSample = config['control_sample']
 
 
@@ -160,7 +156,7 @@ rule CutAdapt:
 		'''
 		ml python/2.7.16
 
-		cutadapt -a {config[fw_adapter]} -A {config[rev_adapter]} -q 20 --minimum-length 1 -o {output.read1} {input.read1} > cutadapt/{wildcards.sample}_{wildcards.replicate}.cutadapt.report.txt
+		cutadapt -a {config[fw_adapter]} -q 20 --minimum-length 1 -o {output.read1} {input.read1} > cutadapt/{wildcards.sample}_{wildcards.replicate}.cutadapt.report.txt
 		'''
 rule FastQC_pass2:
 	input:
@@ -177,7 +173,7 @@ rule FastQC_pass2:
 		'''
 
 rule STAR:
-	input: 
+	input:
 		read1 = working_dir + 'cutadapt/{sample}_{replicate}.cutadapt.q20.minlen1.' + raw_file_ext,
 	output:
 		working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}.Aligned.out.bam',
@@ -205,7 +201,7 @@ rule STAR:
 
 
 rule TEtranscripts:
-	input: 
+	input:
 		treatment_files = expand(working_dir + 'RNAseq.STAR/RNAseq.STAR.{{sample}}_{replicate}.Aligned.out.bam', replicate = replicates),
 		control_files = expand(working_dir + 'RNAseq.STAR/RNAseq.STAR.' + controlSample + '_{replicate}.Aligned.out.bam', replicate = replicates)
 	output:
@@ -214,6 +210,7 @@ rule TEtranscripts:
 		working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_DESeq2.R',
 		working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_sigdiff_gene_TE.txt'
 	log: 'logs/TEtranscripts.{sample}.log'
+	conda: 'environment.yaml'
 	shell:
 		'''
 		ml python/2.7.16
@@ -231,11 +228,9 @@ rule Telescope:
 	input: working_dir + 'RNAseq.STAR/RNAseq.STAR.{sample}_{replicate}.Aligned.out.bam'
 	output: working_dir + 'telescope/{sample}_{replicate}-telescope_report.tsv'
 	log: 'logs/Telescope.{sample}_{replicate}.log'
+	conda: 'environment.yaml'
 	shell:
 		'''
-		ml miniconda
-		source activate telescope_env
-
 		telescope assign {input} {config[telescope_GTF]} \
 		--outdir telescope/ --exp_tag {wildcards.sample}_{wildcards.replicate}
 
@@ -256,6 +251,7 @@ rule Telescope_DESeq:
 		cntrl_sample = controlSample,
 		workingDir = working_dir
 	log: 'logs/Telescope_DESeq.{sample}.log'
+	conda: 'environment.yaml'
 	shell:
 		'''
 		ml python
@@ -264,7 +260,7 @@ rule Telescope_DESeq:
 
 		ls {params.workingDir}telescope/*{wildcards.sample}*telescope_report.tsv > {output.treat_files_list}
 		ls {params.workingDir}telescope/*{params.cntrl_sample}*telescope_report.tsv > {output.cntrl_files_list}
-		
+
 		#  make the DESeq count table and generate a DESeq script
 		python {input.script} {output.cntrl_files_list} {output.treat_files_list} {config[telescope_GTF]} {params.workingDir}telescope/ -o {wildcards.sample}.telescope.count.table
 		# run the generated script
@@ -308,7 +304,7 @@ rule make_sample_tables:
 
 
 rule Combine_tables_telescope:
-	input: 
+	input:
 		telescope_files = expand(working_dir + 'telescope/{sample}.telescope.count.table.DESeq2.tsv', sample = SAMPLE_IDS_no_control),
 		sample_table = working_dir + 'telescope/sample_table.txt',
 		script = 'scripts/combine.tables.plot.data.py'
@@ -325,7 +321,7 @@ rule Combine_tables_telescope:
 		-p TRUE -s {input.sample_table}
 		'''
 rule Combine_tables_TEtranscripts:
-	input: 
+	input:
 		TEtranscripts_files = expand(working_dir + 'TEtranscripts/{sample}.TEtranscripts.DESeq_gene_TE_analysis.txt', sample = SAMPLE_IDS_no_control),
 		sample_table = working_dir + 'TEtranscripts/sample_table.txt',
 		script = 'scripts/combine.tables.plot.data.py'
