@@ -127,6 +127,7 @@ assert len(SAMPLE_IDS) > 1, "No samples found!"
 rule all:
 	input:
 		expand(working_dir + 'FastQC/{sample}_{replicate}_{read}_fastqc.html', sample = SAMPLE_IDS, replicate = replicates, read = ['R1','R2']),
+		expand(working_dir + 'FastQC/multiqc_report.html'),
 		expand(working_dir + 'FastQC_2/{sample}_{replicate}_{read}.cutadapt.q20.minlen1_fastqc.html', sample = SAMPLE_IDS, replicate = replicates, read = ['R1','R2']),
 		# expand(working_dir + 'cutadapt/{sample}_{replicate}_{read}.cutadapt.q20.minlen1.' + raw_file_ext, sample = SAMPLE_IDS, replicate = replicates, read = ['R1', 'R2']),
 		# expand(working_dir + 'RNAseq.STAR/RNAseq.STAR.{file}.Aligned.out.bam', file = SAMPLE_IDS),
@@ -149,6 +150,24 @@ rule FastQC:
 		'''
 		ml fastQC/0.11.8 &&
 				fastqc -o FastQC {input}
+		'''
+rule multiqc:
+	input:
+		multiqc_files = expand(working_dir + 'FastQC/{sample}_{replicate}_{read}_fastqc.html', sample = SAMPLE_IDS, replicate = replicates, read = ['R1','R2'])
+                
+	output: 
+		working_dir + 'FastQC/multiqc_report.html'
+       
+	params:
+                workingDir = working_dir
+
+	log: 'logs/multiqc_fastqc.log'
+	conda: 'environment.yaml'
+	shell:
+		'''
+		ml multiqc
+		multiqc {input.multiqc_files}
+
 		'''
 rule CutAdapt:
 	input:
