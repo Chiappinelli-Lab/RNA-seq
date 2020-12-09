@@ -213,8 +213,10 @@ rule TEtranscripts:
 	conda: 'environment.yaml'
 	shell:
 		'''
-		ml python/2.7.16
-		ml R/3.4.4
+		#ml miniconda
+		#source activate snakemake
+		#ml python/2.7.16
+		#ml R/3.4.4
 		#ml gcc/8.1.0 no longer need to re-load gcc after loading R in pegasus
 		ml xz/5.2.5
 		TEtranscripts --format BAM --mode multi --stranded reverse -t {input.treatment_files} -c {input.control_files} \
@@ -231,6 +233,9 @@ rule Telescope:
 	conda: 'environment.yaml'
 	shell:
 		'''
+		#ml miniconda
+		#source activate snakemake
+
 		telescope assign {input} {config[telescope_GTF]} \
 		--outdir telescope/ --exp_tag {wildcards.sample}_{wildcards.replicate}
 
@@ -254,8 +259,8 @@ rule Telescope_DESeq:
 	conda: 'environment.yaml'
 	shell:
 		'''
-		ml python
-		ml R/3.4.4
+		#ml python
+		#ml R/3.4.4
 		#ml gcc/8.1.0 no longer need to re-load gcc after loading R in pegasus
 
 		ls {params.workingDir}telescope/*{wildcards.sample}*telescope_report.tsv > {output.treat_files_list}
@@ -312,9 +317,10 @@ rule Combine_tables_telescope:
 	params:
 		workingDir = working_dir
 	log: 'logs/Combine_tables_telescope.log'
+        conda: 'combine_tables.yaml'
 	shell:
 		'''
-		ml python
+		#ml python
 		python {input.script} \
 		{params.workingDir}telescope/ \
 		-n all.samples.telescope -x .count.table.DESeq2.tsv -a {config[telescope_GTF]}  \
@@ -329,9 +335,10 @@ rule Combine_tables_TEtranscripts:
 	params:
 		workingDir = working_dir
 	log: 'logs/Combine_tables_TEtranscripts.log'
+        conda: 'combine_tables.yaml'
 	shell:
 		'''
-		ml python
+		#ml python
 		python {input.script} \
 		{params.workingDir}TEtranscripts/ \
 		-n all.samples.TEtranscripts -x .DESeq_gene_TE_analysis.txt   \
