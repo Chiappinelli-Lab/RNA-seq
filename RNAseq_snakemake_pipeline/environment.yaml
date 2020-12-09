@@ -1,8 +1,11 @@
+name: snakemake
 channels:
   - conda-forge
   - bioconda
 dependencies:
   - bioconda::snakemake-minimal =5.4.5
   - python =3.6
+  - numpy =1.19.2
   - cutadapt =2.10
-  - tetranscripts
+  - tetranscripts =2.2.1
+  - telescope =1.0.3

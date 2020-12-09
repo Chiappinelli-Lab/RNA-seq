@@ -11,9 +11,9 @@ __default__:
   mail-type: ALL
 FastQC:
   time: '5:00:0'
-  jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}.{wildcards.read}'
-  output: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.{wildcards.read}.%j.out
-  err: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.{wildcards.read}.%j.err
+  jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}'
+  output: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.out
+  err: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.err
 CutAdapt:
   time: '5:00:0'
   jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}'
@@ -21,9 +21,9 @@ CutAdapt:
   err: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.err
 FastQC_pass2:
   time: '5:00:0'
-  jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}.{wildcards.read}'
-  output: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.{wildcards.read}.%j.out
-  err: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.{wildcards.read}.%j.err
+  jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}'
+  output: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.out
+  err: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.err
 STAR:
   time: '5:00:0'
   jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}'

@@ -28,14 +28,15 @@ This is a snakemake pipeline for RNA-seq analysis of repetitive element expressi
 ### Folder structure:
 - Raw data should be located in folder called `raw_files`
 - `RNAseq.Snakefile`, `RNAseq.Snakemake.cluster.config.yaml`, and `RNAseq.Snakemake.config.yaml` must be in the working directory
-- You need to create a new directory called `outputs` (sbatch outputs will go here)
-- All other subfolders will be created automatically
+- All subfolders will be created automatically
 
 ## To run the pipeline:
 1. start a new tmux session with the command `tmux new-session -s <session name>`
 2. Activate the snakemake enviroinment with the command `source activate snakemake`
 3. Run the snakemake command:
 ```
-snakemake -s RNAseq.Snakefile -j 100 --configfile RNAseq.Snakemake.config.yaml --cluster-config RNAseq.Snakemake.cluster.config.yaml --cluster "sbatch -o {cluster.output} -e {cluster.err} -p {cluster.p} -N {cluster.N} -J {cluster.jobName} -t {cluster.time} --mail-user={cluster.mail-user} --mail-type={cluster.mail-type}"
+snakemake -s RNAseq.Snakefile -j 100 --use-conda --configfile RNAseq.Snakemake.config.yaml --cluster-config RNAseq.Snakemake.cluster.config.yaml --cluster "sbatch -o {cluster.output} -e {cluster.err} -p {cluster.p} -N {cluster.N} -J {cluster.jobName} -t {cluster.time} --mail-user={cluster.mail-user} --mail-type={cluster.mail-type}"
 ```
-3. Snakemake will create two `sample_table.txt` files located in `telescope/` and `TEtranscripts/`. Add columns to these files with any extra information about each sample. These will appear as extra columns in the final `all.samples.DESeq2.tibble.tsv files`.
+Note: If running the single end version of the script, change the `-s RNAseq.Snakefile` argument to `-s RNAseq_singleEnd.Snakefile`
+
+4. Snakemake will create two `sample_table.txt` files located in `telescope/` and `TEtranscripts/`. Add columns to these files with any extra information about each sample. These will appear as extra columns in the final `all.samples.DESeq2.tibble.tsv` files.
