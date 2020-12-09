@@ -10,11 +10,11 @@ This is a snakemake pipeline for RNA-seq analysis of repetitive element expressi
 7. Combine all samples into two final output tables -- one for telescope and one for TEtranscripts
 ## Setup:
 ### Create a snakemake pipeline environment
-#### 1. Download or copy the environment.yaml file 
+#### 1. Download or copy the environment.yml file 
 #### 2. Load miniconda 
 `ml miniconda`
 #### 3. Create the new environment 
-`conda env create -f environment.yml`
+`conda env create -n snakemake -f environment.yml`
 #### 4. Activate the envirionment 
 `source activate snakemake`
 ### Raw data:
