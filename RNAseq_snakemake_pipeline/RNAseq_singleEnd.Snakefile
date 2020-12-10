@@ -100,7 +100,10 @@ print("Starting Snakemake...")
 
 #### Get sample IDs ################################################################################
 SAMPLE_IDS = glob_wildcards(working_dir + 'raw_files/{sample}_{replicate}.' + raw_file_ext).sample
-# this will grab multiple of the same SAMPLE_ID (one for each replicate). We want just the unique ones
+# this will grab multiple of the same SAMPLE_ID (one for each replicate). Use this to determine number of replicates
+replicate_dict = {i:SAMPLE_IDS.count(i) for i in SAMPLE_IDS}
+print(replicate_dict)
+# Now grab just the unique ones
 # convert to a set (only takes unique values)
 SAMPLE_ID_set = set(SAMPLE_IDS)
 # convert back to a list
@@ -114,6 +117,7 @@ for sample in SAMPLE_IDS:
 
 print("SAMPLE_IDS = " + str(SAMPLE_IDS))
 print("SAMPLE_IDS_no_control = " + str(SAMPLE_IDS_no_control))
+
 
 #validate SAMPLE_IDS exist
 assert len(SAMPLE_IDS) > 1, "No samples found!"
