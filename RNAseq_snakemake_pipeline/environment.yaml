@@ -9,3 +9,5 @@ dependencies:
   - cutadapt =2.10
   - tetranscripts =2.2.1
   - telescope =1.0.3
+  - multiqc
+  - pandas

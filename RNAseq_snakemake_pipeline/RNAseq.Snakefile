@@ -127,6 +127,7 @@ assert len(SAMPLE_IDS) > 1, "No samples found!"
 rule all:
 	input:
 		expand(working_dir + 'FastQC/{sample}_{replicate}_{read}_fastqc.html', sample = SAMPLE_IDS, replicate = replicates, read = ['R1','R2']),
+		# expand(working_dir + 'FastQC/multiqc_report.html'),
 		expand(working_dir + 'FastQC_2/{sample}_{replicate}_{read}.cutadapt.q20.minlen1_fastqc.html', sample = SAMPLE_IDS, replicate = replicates, read = ['R1','R2']),
 		# expand(working_dir + 'cutadapt/{sample}_{replicate}_{read}.cutadapt.q20.minlen1.' + raw_file_ext, sample = SAMPLE_IDS, replicate = replicates, read = ['R1', 'R2']),
 		# expand(working_dir + 'RNAseq.STAR/RNAseq.STAR.{file}.Aligned.out.bam', file = SAMPLE_IDS),
@@ -147,9 +148,31 @@ rule FastQC:
 	log: 'logs/FastQC.{sample}_{replicate}_{read}.log'
 	shell:
 		'''
-		ml fastQC/0.11.5 &&
+		ml fastQC/0.11.8 &&
 				fastqc -o FastQC {input}
 		'''
+
+# not ready for deployment in "master" brach quite yet. Needs testing
+# rule multiqc:
+# 	input:
+# 		multiqc_files = expand(working_dir + 'FastQC/{sample}_{replicate}_{read}_fastqc.html', sample = SAMPLE_IDS, replicate = replicates, read = ['R1','R2'])
+                
+# 	output: 
+# 		working_dir + 'FastQC/multiqc_report.html'
+       
+# 	params:
+#                 workingDir = working_dir
+
+# 	log: 'logs/multiqc_fastqc.log'
+# 	conda: 'environment.yaml'
+# 	shell:
+# 		'''
+# 		ml multiqc
+# 		multiqc {input.multiqc_files}
+
+# 		'''
+
+
 rule CutAdapt:
 	input:
 		read1 = working_dir + 'raw_files/{sample}_{replicate}_R1.' + raw_file_ext,
@@ -161,7 +184,7 @@ rule CutAdapt:
 	log: 'logs/CutAdapt.{sample}_{replicate}.log'
 	shell:
 		'''
-		ml python/2.7.6
+		ml python/2.7.16
 
 		cutadapt -a {config[fw_adapter]} -A {config[rev_adapter]} -q 20 --minimum-length 1 -o {output.read1} -p {output.read2} {input.read1} {input.read2} > cutadapt/{wildcards.sample}_{wildcards.replicate}.cutadapt.report.txt
 		'''
@@ -175,7 +198,7 @@ rule FastQC_pass2:
 	log: 'logs/FastQC_2.{sample}_{replicate}_{read}.log'
 	shell:
 		'''
-		ml fastQC/0.11.5 &&
+		ml fastQC/0.11.8 &&
 			fastqc -o FastQC_2 {input}
 		'''
 
@@ -199,7 +222,7 @@ rule STAR:
 	log: 'logs/STAR.{sample}_{replicate}.log'
 	shell:
 		'''
-		ml star/2.6
+		ml star/2.7.0e
 		STAR --runThreadN 16 --genomeDir {config[STAR_genomeDir]} \
 		--sjdbGTFfile {config[STAR_GTF]} \
 		--sjdbOverhang 100 \
@@ -220,10 +243,10 @@ rule TEtranscripts:
 	log: 'logs/TEtranscripts.{sample}.log'
 	shell:
 		'''
-		ml python/2.7.6
-		ml R/3.4.2
-		ml gcc/8.1.0
-		ml xz/5.2.3
+		ml python/2.7.16
+		ml R/3.4.4
+		#ml gcc/8.1.0 #no longer need to re-load gcc after loading R on pegasus 
+		ml xz/5.2.5
 		TEtranscripts --format BAM --mode multi --stranded reverse -t {input.treatment_files} -c {input.control_files} \
 		--GTF {config[TEtrx_GTF]} \
 		--TE {config[TEtrx_TE]} \
@@ -263,8 +286,8 @@ rule Telescope_DESeq:
 	shell:
 		'''
 		ml python
-		ml R/3.4.2
-		ml gcc/8.1.0
+		ml R/3.4.4
+		#ml gcc/8.1.0 no longer need to re-load gcc after loading R
 
 		ls {params.workingDir}telescope/*{wildcards.sample}*telescope_report.tsv > {output.treat_files_list}
 		ls {params.workingDir}telescope/*{params.cntrl_sample}*telescope_report.tsv > {output.cntrl_files_list}
