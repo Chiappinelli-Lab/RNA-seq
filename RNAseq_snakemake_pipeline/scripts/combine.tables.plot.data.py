@@ -9,6 +9,7 @@ import csv # try this way to read tibble for graphs
 import textwrap # This lets me clear indentation from the script output I make
 import numpy as np # For creating arrays
 import matplotlib as mpl # For making some simple graphs
+mpl.use('Agg') # set the backend before importing pyplot
 import matplotlib.pyplot as plt # For shortcut use of the scripting interface of matplotlib
 from matplotlib.backends.backend_pdf import PdfPages # Allows you to save mutliple figures to one PDF
 import datetime # This lets me get the time stamp for files without a name
@@ -230,8 +231,8 @@ def add_sample_info_to_ouput(output_line, input_file, sample_df, input_df_index,
 def make_graphs(tibble_file, summary_data_name):
     # Open and read tibble file
     print("In graph subroutine. Tibble file is: ", tibble_file)
-    tibble = pandas.read_csv(tibble_file, sep='\t', header=0)
-
+    tibble = pandas.read_csv(tibble_file, sep='\t', header=0, dtype={"log2fc": np.float64, "padj": np.float64})
+    #print(tibble.dtypes)
     # Get array of input filenames. Will be used to filter dataframe in order to create a bar chart & violin plot for each sample input file.
     unique_filenames = tibble.iloc[:,0].unique()
 

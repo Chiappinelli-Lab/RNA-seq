@@ -1,0 +1,47 @@
+---
+__default__:
+  account:  # your c1 login name (everything before the '@')
+  output: outputs/{rule}.{wildcards}.%j.out
+  err: outputs/{rule}.{wildcards}.%j.err
+  p: defq,short,tiny
+  N: '1'
+  jobName: '{rule}.{wildcards.sample}'
+  time: '00:05:0'
+  mail-user:  #email address you want SLURM notifications sent to
+  mail-type: ALL
+FastQC:
+  time: '5:00:0'
+  jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}'
+  output: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.out
+  err: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.err
+CutAdapt:
+  time: '5:00:0'
+  jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}'
+  output: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.out
+  err: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.err
+FastQC_pass2:
+  time: '5:00:0'
+  jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}'
+  output: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.out
+  err: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.err
+STAR:
+  time: '5:00:0'
+  jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}'
+  output: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.out
+  err: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.err
+Telescope:
+  time: '7:00:0'
+  jobName: '{rule}.{wildcards.sample}.{wildcards.replicate}'
+  output: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.out
+  err: outputs/{rule}.{wildcards.sample}.{wildcards.replicate}.%j.err
+Telescope_DESeq:
+  time: '00:10:0'
+  jobName: '{rule}.{wildcards.sample}'
+  output: outputs/{rule}.{wildcards.sample}.%j.out
+  err: outputs/{rule}.{wildcards.sample}.%j.err
+TEtranscripts:
+  time: '10:00:0'
+  p: defq,short
+  jobName: '{rule}.{wildcards.sample}'
+  output: outputs/{rule}.{wildcards.sample}.%j.out
+  err: outputs/{rule}.{wildcards.sample}.%j.err
