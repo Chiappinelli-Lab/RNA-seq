@@ -123,6 +123,7 @@ def join_telescope_tetranscripts_dataframes(telescope_output_data_frame, tetrans
 def make_Rscript(count_out_path, cntrl_count, treat_count, DESeq2_out_path):
     script_text = \
 '''library("DESeq2")
+library("dplyr")
 # Load in the data
 countdata <- read.table("{count_file}", header=TRUE)
 #Then create a data frame matching the sample names and treatments so that the model can be made
