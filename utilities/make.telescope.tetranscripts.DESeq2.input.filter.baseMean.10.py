@@ -110,7 +110,7 @@ def join_telescope_tetranscripts_dataframes(telescope_output_data_frame, tetrans
     # make sure the genes are strings in the tetranscripts output data frame
     tetranscripts_output_data_frame.iloc[:,0] = tetranscripts_output_data_frame.iloc[:,0].astype(str)
     # keep only the ENSG IDs from the tetranscripts output data frame
-    tetranscripts_output_data_frame = tetranscripts_output_data_frame[tetranscripts_output_data_frame.iloc[:,0].str.contains("ENSG")]
+    tetranscripts_output_data_frame = tetranscripts_output_data_frame[tetranscripts_output_data_frame.iloc[:,0].str.contains("ENS")]
     for dataframe in [telescope_output_data_frame, tetranscripts_output_data_frame]:
         dataframe.columns.values[0] = 'transcript'
         dataframe.set_index('transcript', inplace=True)
