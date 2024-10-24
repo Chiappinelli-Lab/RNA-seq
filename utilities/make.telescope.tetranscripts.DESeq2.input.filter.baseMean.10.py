@@ -24,15 +24,13 @@ import textwrap # This lets me clear indentation from the script output I make
 # 1. TEtranscripts data only -- This will only use the TEtranscripts data to generate a count table and DESeq2 script.  
 # 2. Telescope data only -- This will use the canonical gene IDs from the TEtranscripts data and the Telescope data to generate a count table and DESeq2 script.
 
-# Example Telescope report format for an individual file:
-# [jimcdonald@mgpc telescope.troubleshoot]$ head TCGA-04-1331-01A.bt2.tele.troubleshoot-telescope_report.tsv
-# ## RunInfo      version:1.0.3   annotated_features:28513        total_fragments:93648604        pair_mapped:73382346    pair_mixed:17869347     single_mapped:0 unmapped:2396911        unique:55889111 ambig:35362582  overlap_unique:471738overlap_ambig:1165872
-# transcript      transcript_length       final_count     final_conf      final_prop      init_aligned    unique_count    init_best       init_best_random        init_best_avg   init_prop
-# __no_feature    0       1077218 1064019.00      0.586   1113337 0       907823  936650  936621.33       0.494
-# L1FLnI_20q13.12e        10494   86711   86306.00        0.0172  90696   84418   87714   88011   88011.25        0.0172
-# HARLEQUIN_1q32.1        6394    23910   23302.00        0.0233  25386   10822   24131   24285   24270.49        0.0235
-# L1FLnI_8q21.11w 10016   9488    9288.00 0.000318        23823   9123    11021   11103   11098.60        0.000349
-# L1FLnI_6p22.3e  9889    8056    8048.00 0.00895 9188    7999    8085    8088    8087.32 0.00895
+# Example Telescope report format for the sc_branch from Telescope:
+# transcript      count
+# ERV316A3_10p11.1b       0
+# ERV316A3_10p11.22b      1
+# ERV316A3_10p11.22d      5
+# ERV316A3_10p11.22e      1
+# ERV316A3_10p15.1a       1
 
 # Example TEtranscripts count table format for an individual file:
 # [knestler@log004 raw_files]$ head CNMC_D_760_2-tetranscripts.cntTable
@@ -57,42 +55,17 @@ parser = argparse.ArgumentParser(description="Create a count table to input into
 parser.add_argument("cntrl_files", type=str, help="File/list containing absolute file paths for control samples.")
 parser.add_argument("treat_files", type=str, help="File/list containing absolute file paths for treated or experimental samples.")
 parser.add_argument("out_dir", type=str, help="Directory for output count tables and DESeq secripts.")
-parser.add_argument("-a", "--annotation", type=str, help="Absolute file path to GTF file used by Telescope during the telescope align step.")
 parser.add_argument("-o", "--out_name", type=str, default="combined.count.table", help="Name for output files.")
 parser.add_argument("-na", "--NA_value", type=str, default="zero", choices=['zero', 'exclude'], help="How to handle NA values -- set to zero or exclude.")
 parser.add_argument("-mode", required=True, type=str, choices=['tetranscripts', 'telescope'], help="Generate DESeq2 R script and count table from tetranscripts and telescope data.")
 args = parser.parse_args()
 
-def make_annotation_table(annotation_file):
-    # Initialize the data frame
-    annotation_frame = pandas.DataFrame(columns = ['transcript'])
-    locus_dict = dict()
-
-    # Make a dictionary to find all unique locus IDs from the gene_id field of the annotation file
-    # Print the unique ones to the data frame
-    with open(annotation_file) as annotation_file:
-        for line in annotation_file:
-            locus_regex = re.search('gene_id\s?"([a-zA-Z0-9_.\\(\\)]+)";\s?transcript_id', line)
-            if locus_regex:
-                locus = locus_regex.group(1)
-                if locus not in locus_dict:
-                    locus_dict[locus] = "found"
-                    new_row = pandas.DataFrame({'transcript': [locus]}) # Previous line used append to add a new row to the data frame, but this is deprecated. Now, we use concat instead.
-                    annotation_frame = pandas.concat([annotation_frame, new_row], ignore_index=True)
-            else:
-                # Some lines in Matthew's annotation file give the gene_id for ERVs: "### ERV316A3_1p36.33 ###" on a separate line
-                # I will skip these with the regex. However, you can put a warning here if you want instead of just continuing
-                #print("Warning! This line lacks proper gene_id format:\n\t", line)
-                continue
-    return annotation_frame
-
 # Take a new report file and add it to the count table using pandas merge
 def join_telescope_tables(telescope_report_filename, data_frame):
     file_base_name = os.path.basename(telescope_report_filename)
-    report = pandas.read_csv(telescope_report_filename, sep='\t', skiprows=1)
-    slim_report = pandas.DataFrame(report, columns=['transcript', 'final_conf']) # If you want to have user specified column, replace this variable with passed input from args
-    slim_report = pandas.DataFrame.rename(slim_report, columns={'final_conf' : file_base_name})
-    data_frame = pandas.merge(data_frame, slim_report, on='transcript', how='left')
+    report = pandas.read_csv(telescope_report_filename, sep='\t', index_col=0)
+    report.columns.values[0] = file_base_name
+    data_frame = pandas.concat([data_frame, report], axis=1)
     return data_frame
 
 # Take a new tetranscripts report file and add it to the count table using pandas merge
@@ -168,7 +141,7 @@ def main():
     DESeq2_out_path = "".join([ args.out_dir, args.out_name, ".DESeq2.tsv" ])
     cntrl_file_list = open(args.cntrl_files)
     treat_file_list = open(args.treat_files)
-    telescope_report_suffix = 'telescope_report.tsv'
+    telescope_report_suffix = 'TE_counts.tsv'
     tetranscripts_report_suffix = 'tetranscripts.cntTable'
     telescope_cntrl_count = 0
     telescope_treat_count = 0
@@ -180,8 +153,6 @@ def main():
     if args.mode == "telescope":
 
         # Capture the telescope annotations in a data frame. That I will pass as the base for adding additional data.
-        telescope_output_data_frame = make_annotation_table(args.annotation)
-        telescope_annotation_length = len(telescope_output_data_frame)
         tetranscripts_output_data_frame = pandas.DataFrame()
 
         # Process the data files into one table
@@ -213,7 +184,6 @@ def main():
         assert telescope_treat_count > 0
         assert tetranscripts_cntrl_count > 0
         assert tetranscripts_treat_count > 0
-        assert len(telescope_output_data_frame) == telescope_annotation_length
         assert files_processed == True
         cntrl_count = int((telescope_cntrl_count + tetranscripts_cntrl_count)/2)
         treat_count = int((telescope_treat_count + tetranscripts_treat_count)/2)
