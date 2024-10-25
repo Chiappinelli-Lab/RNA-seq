@@ -130,8 +130,6 @@ countdata <- read.table("{count_file}", header=TRUE)
 names <- colnames(countdata)
 treatment <- c(rep("control", {cntrl_count}), rep("experimental", {treat_count}))
 coldata <- data.frame(treatment, row.names=names)
-# Pre-filtering
-countdata <- countdata[rowSums(countdata) >=10,]
 # Make the DESeq object
 cntTable <- DESeqDataSetFromMatrix(countData = countdata, colData = coldata, design = ~ treatment)
 deseq <- DESeq(cntTable)
