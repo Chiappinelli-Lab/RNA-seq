@@ -1,18 +1,17 @@
 #!/usr/bin/python
-# Last updated: 2023.09.15 by Kevin Nestler
+# Last updated: 2024.10.25 by Kevin Nestler
+# This version of the script is updated to work with the @sc_remove branch of Telescope.
 import sys  # Allows you to use system variabls such as ARGV
 import os   # Allows us to use paths in our code for file locations
 import argparse # This can let you take user input to fine tune variables
-import re   # This lets you use regular expressions
 import pandas # This lets you join tables together without dictionaries
 import textwrap # This lets me clear indentation from the script output I make
 # This script will take in 2 files/lists that specify sample file unique IDs:
 # 1. Control Samples
 # 2. Treatment/Experimental Samples
-# 3. Annotation file Path -- Assumes GTF!!! This is the annotation file for the Telescope reports only.
-# 4. Output directory
-# 5. Optional input will be a tag for output file names and a flag for handling NA values.
-# 6. Required input will be a flag for mode: tetranscripts or telescope.
+# 3. Output directory
+# 4. Optional input will be a tag for output file names and a flag for handling NA values.
+# 5. Required input will be a flag for mode: tetranscripts or telescope.
 
 # The input files should provide the absolute file path for each Telescope report file and TEtranscripts count table.
 # The path for each Telescope report file should end in "-telescope_report.tsv".
@@ -103,8 +102,6 @@ countdata <- read.table("{count_file}", header=TRUE)
 names <- colnames(countdata)
 treatment <- c(rep("control", {cntrl_count}), rep("experimental", {treat_count}))
 coldata <- data.frame(treatment, row.names=names)
-# Pre-filtering
-countdata <- countdata[rowSums(countdata) >=10,]
 # Make the DESeq object
 cntTable <- DESeqDataSetFromMatrix(countData = countdata, colData = coldata, design = ~ treatment)
 deseq <- DESeq(cntTable)
