@@ -154,6 +154,7 @@ def main():
 
         # Capture the telescope annotations in a data frame. That I will pass as the base for adding additional data.
         tetranscripts_output_data_frame = pandas.DataFrame()
+        telescope_output_data_frame = pandas.DataFrame()
 
         # Process the data files into one table
         for filename in cntrl_file_list:
