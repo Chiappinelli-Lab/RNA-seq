@@ -1,9 +1,0 @@
-name: combine_tables
-channels:
-  - bioconda
-  - defaults
-  - conda-forge
-dependencies:
-  - python =3.6
-  - pandas
-  - matplotlib =2.2.3
