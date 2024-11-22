@@ -1,0 +1,45 @@
+---
+__default__:
+  account:  # Your pegasus login (everything before the '@')
+  output: outputs/{rule}/{rule}.{wildcards}.%j.out
+  err: outputs/{rule}/{rule}.{wildcards}.%j.err
+  p: 'defq,short,tiny'
+  N: '1'
+  jobName: '{rule}.{wildcards.sample}'
+  time: '4:00:0'
+  mail-user:   # Email address you want SLURM notifications sent to
+  mail-type: ALL
+FastQC:
+  time: '00:30:0'
+  p: nano
+  jobName: '{rule}.{wildcards.sample}.{wildcards.read}'
+  output: outputs/{rule}/{rule}.{wildcards.sample}.{wildcards.read}.%j.out
+  err: outputs/{rule}/{rule}.{wildcards.sample}.{wildcards.read}.%j.err
+TrimGalore:
+  time: '4:00:0'
+  jobName: '{rule}.{wildcards.sample}'
+  output: outputs/{rule}/{rule}.{wildcards.sample}.%j.out
+  err: outputs/{rule}/{rule}.{wildcards.sample}.%j.err
+STAR:
+  time: '4:00:0'
+  jobName: '{rule}.{wildcards.sample}'
+  output: outputs/{rule}/{rule}.{wildcards.sample}.%j.out
+  err: outputs/{rule}/{rule}.{wildcards.sample}.%j.err
+MultiQC:
+  time: '00:30:0'
+  p: nano
+  jobName: '{rule}'
+  output: outputs/{rule}/{rule}.%j.out
+  err: outputs/{rule}/{rule}.%j.err
+TEtranscripts:
+  time: '10:00:0'
+  p: 'defq,short'
+  jobName: '{rule}.{wildcards.sample}'
+  output: outputs/{rule}/{rule}.{wildcards.sample}.%j.out
+  err: outputs/{rule}/{rule}.{wildcards.sample}.%j.err
+Telescope:
+  time: '7:00:0'
+  p: 'defq,short'
+  jobName: '{rule}.{wildcards.sample}'
+  output: outputs/{rule}/{rule}.{wildcards.sample}.%j.out
+  err: outputs/{rule}/{rule}.{wildcards.sample}.%j.err

@@ -1,0 +1,17 @@
+working_dir:  # absolute path to working directory. path must end with '/'
+raw_file_extension: # fastq.gz, fq.gz, FASTQ.gz, FQ.gz, etc. (must start AFTER the first '.') Note: this pipelines assumes raw files are gzipped fastq files!
+read_length: # read length
+TEtrx_strandedness: # 'unstranded', 'forward', or 'reverse'
+Tel_strandedness: # 'None', 'RF', or 'FR'
+STAR_genomeDir: "/SMHS/groups/chiappinellilab/genomes/hg38/STAR.hg38.index.2.7.0e" # --genomeDir option in STAR command make sure this matches the read length
+STAR_GTF: "/SMHS/groups/chiappinellilab/genomes/hg38/gencode.annotation/gencode.v21.primary.assembly.only.annotation.gtf" # --sjdbGTFfile option in STAR command
+TEtrx_GTF: "/SMHS/groups/chiappinellilab/genomes/hg38/gencode.annotation/gencode.v21.primary.assembly.only.annotation.gtf" # --GTF option in TEtranscripts command (gene annotation file path)
+TEtrx_TE: "/SMHS/groups/chiappinellilab/genomes/hg38/RepeatMasker/rmsk.hg38.sorted.BOTHfeature.gtf" # --TE option in TEtranscripts command (RE annotation file path)
+Telescope_GTF: "/SMHS/groups/chiappinellilab/genomes/hg38/HERV_L1_rmsk.hg38.gtf" # telescope annotation file path
+envs:
+  fastqc: "envs/fastqc.yaml"
+  trimgalore: "envs/trimGalore.yaml"
+  rseqc: "envs/rseqc.yaml"
+  telescope: "envs/telescope.yaml"
+  tetranscripts: "envs/tetranscripts.yaml"
+  combine_counts: "envs/combine_counts.yaml"
