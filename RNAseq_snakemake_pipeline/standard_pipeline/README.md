@@ -36,10 +36,10 @@ This pipeline is designed to be run on a SLURM cluster. The cluster configuratio
 
 ### Raw data requirements:
 
-- Raw files must be in the format `<sample name>_<read>.<fastq file extension>`
-  -`<sample name>` - can be anything you want, but do not have any hyphens in the name! Underscores or dots are fine.
-  -`<read>` - R1 for read 1 and R2 for read 2.
-  -`<fastq file extension>` - This is set in the config file. Must be gzipped fastq files (e.g., fastq.gz, fq.gz)!
+- Raw files must be in the format: `<sample name>_<read>.<fastq file extension>`
+  - `<sample name>` Can be anything you want, but do not have any hyphens in the name! Underscores or dots are fine.
+  - `<read>` R1 for read 1 and R2 for read 2.
+  - `<fastq file extension>` This is set in the config file. Must be gzipped fastq files (e.g., fastq.gz, fq.gz).
 
 ### Folder structure:
 
