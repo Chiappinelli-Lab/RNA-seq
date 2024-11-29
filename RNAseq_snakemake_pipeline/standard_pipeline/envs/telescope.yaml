@@ -1,3 +1,4 @@
+name: telescope
 channels:
   - conda-forge
   - bioconda
