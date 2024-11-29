@@ -18,21 +18,23 @@ This pipeline is designed to be run on a SLURM cluster. The cluster configuratio
 
 ## Setup:
 
-### Create a snakemake pipeline environment
+### Create a snakemake environment
 
-#### 1. Download or copy the snakemake.yaml file
+#### 1. Download or copy the snakemake.yaml file (located in the envs folder)
 
 #### 2. Load miniconda
 
-`ml miniconda`
+`ml miniconda3`
 
-#### 3. Create the new environment
+#### 3. Create the snakemake environment
 
 `conda env create -n snakemake -f snakemake.yaml`
 
-#### 4. Activate the envirionment
+### Create a folder to store conda environments
 
-`conda activate snakemake`
+#### This pipeline will automatically generate conda environments required for some rules. To avoid repetitive installations when running the pipeline in the future, create a folder to store the environments. This can be in your home directory. Below is an example:
+
+`mkdir ~/snakemake_environments`
 
 ### Raw data requirements:
 
@@ -57,12 +59,14 @@ This pipeline is designed to be run on a SLURM cluster. The cluster configuratio
 ## To run the pipeline:
 
 1. Start a new tmux session with the command `tmux new-session -s <session name>`
-2. Activate the snakemake enviroinment with the command `conda activate snakemake`
+2. Activate the snakemake environment with the command `conda activate snakemake`
 3. Navigate to the working directory where the Snakefile, cluster config, and config files are located as well as the raw data and envs subfolders.
 4. Run the snakemake command:
 
 ```bash
-snakemake -s RNAseq.standard.Snakefile -j 100 --use-conda --configfile RNAseq.standard.Snakemake.config.yaml --cluster-config RNAseq.standard.Snakemake.cluster.config.yaml --cluster "sbatch -o {cluster.output} -e {cluster.err} -p {cluster.p} -N {cluster.N} -J {cluster.jobName} -t {cluster.time} --mail-user={cluster.mail-user} --mail-type={cluster.mail-type}"
+snakemake -s RNAseq.standard.Snakefile -j 100 --use-conda --conda-prefix ~/snakemake_environments --configfile RNAseq.standard.Snakemake.config.yaml --cluster-config RNAseq.standard.Snakemake.cluster.config.yaml --cluster "sbatch -o {cluster.output} -e {cluster.err} -p {cluster.p} -N {cluster.N} -J {cluster.jobName} -t {cluster.time} --mail-user={cluster.mail-user} --mail-type={cluster.mail-type}"
 ```
 
 Snakemake will create two tsv files located in `results/` containing the raw counts from TEtranscripts and Telescope. These are called `tetranscripts_counts.tsv` and `telescope_counts.tsv`. These count tables are ready for downstream analysis, for example, differential expression analysis.
+
+Note: the first time running this pipeline will take longer as all of the conda environments in the `envs/` folder will be installed. However, with the `--conda-prefix` option specified, Snakemake will store and reuse these conda environments for future runs.
