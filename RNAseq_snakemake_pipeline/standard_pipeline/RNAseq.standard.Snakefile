@@ -40,7 +40,7 @@ snakemake -s RNAseq.standard.Snakefile -j 100 --configfile RNAseq.standard.Snake
     - tetranscripts_counts.tsv
 """
 
-import os.path
+import os
 from os import path
 
 # Load config files
@@ -381,11 +381,11 @@ rule create_count_file_list:
         with open(output.combined_list, 'w') as f:
             # Write telescope file paths
             for file in input.telescope_files:
-                f.write(f"{os.path.abspath(file)}\n")
+                f.write(f"{path.abspath(file)}\n")
             
             # Write tetranscripts file paths
             for file in input.tetranscripts_files:
-                f.write(f"{os.path.abspath(file)}\n")
+                f.write(f"{path.abspath(file)}\n")
 
 rule combine_counts:
     message: "Combining count files"
