@@ -10,7 +10,8 @@ The pipeline steps are as follows:
 4. QC report generation - MultiQC
 5. Gene and TE subfamily read calling - TEtranscripts
 6. Locus-specific TE read calling - Telescope
-7. Combine count files from TEtranscripts and Telescope - combine_counts
+7. Locus-specific TE read calling - TElocal
+8. Combine count files from TEtranscripts, Telescope, and TElocal - combine_counts
 
 REQUIREMENTS:
 Raw data:
@@ -25,9 +26,10 @@ Folder structure:
 - This file, RNAseq.standard.Snakemake.cluster.config.yaml, and RNAseq.standard.Snakemake.config.yaml must be in the working directory
 - Environment yaml files must be in the envs/ folder. The environment yaml files are:
     - fastqc.yaml
-    - trimgalore.yaml
+    - trimGalore.yaml
     - tetranscripts.yaml
     - telescope.yaml
+    - telocal.yaml
     - combine_counts.yaml
 - All subfolders will be created automatically
 
@@ -35,9 +37,11 @@ TO RUN THE PIPELINE:
 1. start a new tmux session with the command tmux new-session -s <session name>
 2. Run the following command:
 snakemake -s RNAseq.standard.Snakefile -j 100 --configfile RNAseq.standard.Snakemake.config.yaml --cluster-config RNAseq.standard.Snakemake.cluster.config.yaml --cluster "sbatch -o {cluster.output} -e {cluster.err} -p {cluster.p} -N {cluster.N} -J {cluster.jobName} -t {cluster.time} --mail-user={cluster.mail-user} --mail-type={cluster.mail-type}"
-3. Snakemake will create two count tables located in the results/ folder:
-    - telescope_counts.tsv
-    - tetranscripts_counts.tsv
+3. Snakemake will create four count tables located in the results/ folder:
+    - telescope_counts.tsv # this file is ready for input into DESeq2
+    - tetranscripts_counts.tsv # this file is ready for input into DESeq2
+    - telocal_counts.tsv # this file is ready for input into DESeq2
+    - telocal_counts_annotated.tsv # this file contains the RepeatMasker annotations and chromosome positions
 """
 
 import os
@@ -56,9 +60,9 @@ assert 'raw_file_extension' in config, "Missing field in configfile -- 'raw_file
 assert 'read_length' in config, "Missing field in configfile -- 'read_length'"
 assert 'STAR_genomeDir' in config, "Missing field in configfile -- 'STAR_genomeDir'"
 assert 'STAR_GTF' in config, "Missing field in configfile -- 'STAR_GTF'"
-assert 'TEtrx_GTF' in config, "Missing field in configfile -- 'TEtrx_GTF'"
 assert 'TEtrx_TE' in config, "Missing field in configfile -- 'TEtrx_TE'"
 assert 'Telescope_GTF' in config, "Missing field in configfile -- 'Telescope_GTF'"
+assert 'TEloc_TE' in config, "Missing field in configfile -- 'TEloc_GTF'"
 
 # Check that each field is filled in and properly formatted
 # Working dir
@@ -78,9 +82,6 @@ assert path.exists(config['STAR_genomeDir']), "config file: STAR_genomeDir " + c
 # STAR GTF
 assert len(config['STAR_GTF']) > 0, "config file: Please provide a STAR GTF file (STAR_GTF)."
 assert path.exists(config['STAR_GTF']), "config file: STAR_GTF " + config['STAR_GTF'] + " does not exist."
-# TEtranscripts GTF
-assert len(config['TEtrx_GTF']) > 0, "config file: Please provide a TEtranscripts GTF file (TEtrx_GTF)."
-assert path.exists(config['TEtrx_GTF']), "config file: TEtrx_GTF " + config['TEtrx_GTF'] + " does not exist."
 # TEtranscripts TE
 assert len(config['TEtrx_TE']) > 0, "config file: Please provide a TEtranscripts TE file (TEtrx_TE)."
 assert path.exists(config['TEtrx_TE']), "config file: TEtrx_TE " + config['TEtrx_TE'] + " does not exist."
@@ -305,7 +306,7 @@ rule TEtranscripts:
     params:
         output_dir = working_dir + 'TEtranscripts',
         strandedness = config['TEtrx_strandedness'],
-        gtf = config['TEtrx_GTF'],
+        gtf = config['STAR_GTF'],
         te = config['TEtrx_TE']
     
     conda:
@@ -378,7 +379,7 @@ rule TElocal:
     params:
         output_dir = working_dir + 'TElocal',
         strandedness = config['TEtrx_strandedness'],
-        gtf = config['TEtrx_GTF'],
+        gtf = config['STAR_GTF'],
         te = config['TEloc_TE']
     
     conda:

@@ -29,6 +29,8 @@ def annotate_telocal_outputs(annotation_file_path, data_frame):
     telocal_annt[['Chromosome', 'Coordinates', 'Strand']] = telocal_annt['chromosome:start-stop:strand'].str.split(':', expand=True)
     telocal_annt[['Start', 'Stop']] = telocal_annt['Coordinates'].str.split('-', expand=True)
     telocal_annt = telocal_annt.drop(columns=['chromosome:start-stop:strand', 'Coordinates'])
+    telocal_annt['Start'] = telocal_annt['Start'].astype(int)
+    telocal_annt['Stop'] = telocal_annt['Stop'].astype(int)
     data_frame = telocal_annt
     return data_frame
 
@@ -108,14 +110,10 @@ def main():
         # Annotate telocal outputs
         annotation_file_path = (r'/SMHS/groups/chiappinellilab/genomes/hg38/RepeatMasker/rmsk_hg38_TE_local_locations.locInd')
         telocal_annt_output_data_frame = annotate_telocal_outputs(annotation_file_path, telocal_annt_output_data_frame)
-        telocal_output_data_frame.rename(columns={telocal_output_data_frame.columns[0]: "gene/TE"}, inplace=True)
-        telocal_output_data_frame[['TE', 'Subfamily', 'Family', 'Class']] = telocal_output_data_frame['gene/TE'].str.split(":", expand=True)
-        telocal_output_data_frame.loc[telocal_output_data_frame["gene/TE"].str.contains("ENS", na=False), "TE"] = None
-        telocal_output_data_frame = telocal_output_data_frame.merge(telocal_annt_output_data_frame[['TE', 'Chromosome', 'Strand', 'Start', 'Stop']],
-                                                                    on='TE', how='left')
-        telocal_output_data_frame["Start"] = telocal_output_data_frame["Start"].astype("Int64")
-        telocal_output_data_frame["Stop"] = telocal_output_data_frame["Stop"].astype("Int64")
-        telocal_output_data_frame.to_csv(annt_output_path, sep='\t', index=False)
+        telocal_output_data_frame.rename(columns={telocal_output_data_frame.columns[0]: "transcript"}, inplace=True)
+        telocal_output_data_frame[['TE', 'Subfamily', 'Family', 'Class']] = telocal_output_data_frame['transcript'].str.split(":", expand=True)
+        telocal_combined_data_frame = pandas.merge(telocal_output_data_frame, telocal_annt_output_data_frame)
+        telocal_combined_data_frame.to_csv(annt_output_path, sep='\t', index=False)
 
     else:
         print("Error! Mode not recognized. Please use tetranscripts, telescope, or telocal.")
