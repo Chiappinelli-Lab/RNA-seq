@@ -8,6 +8,7 @@ STAR_GTF: "/SMHS/groups/chiappinellilab/genomes/hg38/gencode.annotation/gencode.
 TEtrx_GTF: "/SMHS/groups/chiappinellilab/genomes/hg38/gencode.annotation/gencode.v21.primary.assembly.only.annotation.gtf" # --GTF option in TEtranscripts command (gene annotation file path)
 TEtrx_TE: "/SMHS/groups/chiappinellilab/genomes/hg38/RepeatMasker/rmsk.hg38.sorted.BOTHfeature.gtf" # --TE option in TEtranscripts command (RE annotation file path)
 Telescope_GTF: "/SMHS/groups/chiappinellilab/genomes/hg38/HERV_L1_rmsk.hg38.gtf" # telescope annotation file path
+TEloc_TE: "/SMHS/groups/chiappinellilab/genomes/hg38/RepeatMasker/rmsk_hg38_TE_local.locInd"
 envs:
   fastqc: "envs/fastqc.yaml"
   trimgalore: "envs/trimGalore.yaml"
@@ -15,3 +16,4 @@ envs:
   telescope: "envs/telescope.yaml"
   tetranscripts: "envs/tetranscripts.yaml"
   combine_counts: "envs/combine_counts.yaml"
+  telocal: "envs/telocal.yaml"

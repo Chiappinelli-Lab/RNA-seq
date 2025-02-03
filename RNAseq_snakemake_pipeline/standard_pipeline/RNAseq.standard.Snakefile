@@ -87,13 +87,16 @@ assert path.exists(config['TEtrx_TE']), "config file: TEtrx_TE " + config['TEtrx
 # Telescope GTF
 assert len(config['Telescope_GTF']) > 0, "config file: Please provide a Telescope GTF file (Telescope_GTF)."
 assert path.exists(config['Telescope_GTF']), "config file: Telescope_GTF " + config['Telescope_GTF'] + " does not exist."
+# TElocal TE
+assert len(config['TEloc_TE']) > 0, "config file: Please provide a TElocal TE file (TEloc_TE)."
+assert path.exists(config['TEloc_TE']), "config file: TEloc_TE " + config['TEloc_TE'] + " does not exist."
 
 # Store some of the config values as variables
 working_dir = config['working_dir']
 raw_file_ext = config['raw_file_extension']
 
 # Create output directories for each rule
-for rule in ["FastQC", "TrimGalore", "STAR", "MultiQC", "TEtranscripts", "Telescope"]:
+for rule in ["FastQC", "TrimGalore", "STAR", "MultiQC", "TEtranscripts", "Telescope", "TElocal"]:
     os.makedirs(f"outputs/{rule}", exist_ok=True)
 
 ############################################################################################################
@@ -125,6 +128,7 @@ rule all:
         expand(working_dir + "star/{sample}/{sample}_Aligned.out.bam", sample=sample_ids),
         expand(working_dir + "TEtranscripts/{sample}-tetranscripts.cntTable", sample=sample_ids),
         expand(working_dir + "telescope/{sample}-TE_counts.tsv", sample=sample_ids),
+        expand(working_dir + "TElocal/{sample}-telocal.cntTable", sample=sample_ids),
         working_dir + "multiqc/multiqc_report.html",
         working_dir + "lists/combined_count_files.txt",
         working_dir + "results/telescope_counts.tsv",
@@ -360,12 +364,47 @@ rule Telescope:
         &> {log}
         """
 
+rule TElocal:
+    message: "Running TElocal for {wildcards.sample}"
+    
+    input:
+        working_dir + 'star/{sample}/{sample}_Aligned.out.bam',
+    
+    output:
+        working_dir + 'TElocal/{sample}-telocal.cntTable',
+
+    log: 'logs/TElocal/TElocal.{sample}.log'
+
+    params:
+        output_dir = working_dir + 'TElocal',
+        strandedness = config['TEtrx_strandedness'],
+        gtf = config['TEtrx_GTF'],
+        te = config['TEloc_TE']
+    
+    conda:
+        config['envs']['telocal']
+
+    shell:
+        """
+        # Create the output directory
+        mkdir -p {params.output_dir}
+
+        # Run TElocal
+        TElocal --mode multi --stranded {params.strandedness} \
+        -b {input} \
+        --GTF {params.gtf} \
+        --TE {params.te} \
+        --project TElocal/{wildcards.sample}-telocal \
+        &> {log}
+        """
+
 rule create_count_file_list:
     message: "Creating a list of count files for combining"
     
     input:
         telescope_files = expand(working_dir + "telescope/{sample}-TE_counts.tsv", sample=sample_ids),
         tetranscripts_files = expand(working_dir + "TEtranscripts/{sample}-tetranscripts.cntTable", sample=sample_ids)
+        telocal_files = expand(working_dir + "TElocal/{sample}-telocal.cntTable", sample=sample_ids)
     
     output:
         combined_list = working_dir + "lists/combined_count_files.txt"
@@ -386,6 +425,10 @@ rule create_count_file_list:
             # Write tetranscripts file paths
             for file in input.tetranscripts_files:
                 f.write(f"{path.abspath(file)}\n")
+            
+            # Write telocal file paths
+            for file in input.telocal_files:
+                f.write(f"{path.abspath(file)}\n")
 
 rule combine_counts:
     message: "Combining count files"
@@ -396,6 +439,8 @@ rule combine_counts:
     output:
         telescope_counts = working_dir + "results/telescope_counts.tsv",
         tetranscripts_counts = working_dir + "results/tetranscripts_counts.tsv"
+        telocal_counts = working_dir + "results/telocal_counts.tsv"
+        telocal_counts_annt = working_dir + "results/telocal_counts_annotated.tsv"
     
     params:
         output_dir = working_dir + "results"
@@ -413,4 +458,7 @@ rule combine_counts:
 
         # Run for tetranscripts counts
         python scripts/combine_counts.py {input.combined_list} {params.output_dir} -mode tetranscripts
+
+        # Run for telocal counts
+        python scripts/combine_counts.py {input.combined_list} {params.output_dir} -mode telocal
         """
