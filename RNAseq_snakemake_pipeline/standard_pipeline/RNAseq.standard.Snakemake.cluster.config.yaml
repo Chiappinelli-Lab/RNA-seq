@@ -43,3 +43,9 @@ Telescope:
   jobName: '{rule}.{wildcards.sample}'
   output: outputs/{rule}/{rule}.{wildcards.sample}.%j.out
   err: outputs/{rule}/{rule}.{wildcards.sample}.%j.err
+TElocal:
+  time: '7:00:0'
+  p: 'defq,short'
+  jobName: '{rule}.{wildcards.sample}'
+  output: outputs/{rule}/{rule}.{wildcards.sample}.%j.out
+  err: outputs/{rule}/{rule}.{wildcards.sample}.%j.err

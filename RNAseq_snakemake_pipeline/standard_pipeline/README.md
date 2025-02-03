@@ -1,6 +1,6 @@
 # RNA-seq snakemake pipeline - standard pipeline
 
-This is a snakemake pipeline for RNA-seq analysis of repetitive element expression. This is a basic pipeline that process RNA-seq data according to our standard workflow and generates combined count tables containing raw counts from TEtranscripts and Telescope. TEtranscripts is a software that quantifies repetitive element expression at the subfamily level, while Telescope quantifies repetitive element expression at the locus-specific level. This pipeline generates two count tables, one for TEtranscripts and one for Telescope, containing gene + subfamily TE raw counts and gene + locus TE raw counts, respectively for all samples. This pipeline is designed to be run on a SLURM cluster.
+This is a snakemake pipeline for RNA-seq analysis of repetitive element expression. This is a basic pipeline that process RNA-seq data according to our standard workflow and generates combined count tables containing raw counts from TEtranscripts, Telescope, and TElocal. TEtranscripts is a software that quantifies repetitive element expression at the subfamily level, while Telescope and TElocal quantify repetitive element expression at the locus-specific level. This pipeline generates four count tables, one for TEtranscripts, one for Telescope, and one for TElocal that contains gene + subfamily TE raw counts and gene + locus TE raw counts, respectively for all samples. The fourth count table that is generated contains the counts and RepeatMasker annotations/genomic coordinates for the repetitive elements identified in TElocal. This pipeline is designed to be run on a SLURM cluster.
 
 The standard pipeline steps are as follows:
 
@@ -10,7 +10,8 @@ The standard pipeline steps are as follows:
 4. QC report generation - MultiQC
 5. Gene and TE subfamily read calling - TEtranscripts
 6. Locus-specific read calling - Telescope
-7. Combine count files from TEtranscripts and Telescope - combine_counts
+7. Locus-specific read calling - TElocal
+8. Combine count files from TEtranscripts and Telescope - combine_counts
 
 This pipeline assumes paired end data!
 
@@ -53,6 +54,7 @@ This pipeline is designed to be run on a SLURM cluster. The cluster configuratio
   - trimgalore.yaml
   - tetranscripts.yaml
   - telescope.yaml
+  - telocal.yaml
   - combine_counts.yaml
 - All other subfolders will be created automatically.
 
@@ -67,6 +69,12 @@ This pipeline is designed to be run on a SLURM cluster. The cluster configuratio
 snakemake -s RNAseq.standard.Snakefile -j 100 --use-conda --conda-prefix ~/snakemake_environments --configfile RNAseq.standard.Snakemake.config.yaml --cluster-config RNAseq.standard.Snakemake.cluster.config.yaml --cluster "sbatch -o {cluster.output} -e {cluster.err} -p {cluster.p} -N {cluster.N} -J {cluster.jobName} -t {cluster.time} --mail-user={cluster.mail-user} --mail-type={cluster.mail-type}"
 ```
 
-Snakemake will create two tsv files located in `results/` containing the raw counts from TEtranscripts and Telescope. These are called `tetranscripts_counts.tsv` and `telescope_counts.tsv`. These count tables are ready for downstream analysis, for example, differential expression analysis.
+Snakemake will create four tsv files located in `results/` containing the raw counts from TEtranscripts, Telescope, and TElocal. See below for the outputs corresponding to each software.
 
-Note: the first time running this pipeline will take longer as all of the conda environments in the `envs/` folder will be installed. However, with the `--conda-prefix` option specified, Snakemake will store and reuse these conda environments for future runs.
+1. TEtranscripts - `tetranscripts_counts.tsv`
+2. Telescope - `telescope_counts.tsv`
+3. TE local - `telocal_counts.tsv`, `telocal_counts_annotated.tsv`
+
+The `tetranscripts_counts.tsv`, `telescope_counts.tsv`, and `telocal_counts.tsv` count tables are ready for downstream analysis, for example, differential expression analysis.
+
+Note: the first time running this pipeline will take awhile as all of the conda environments in the `envs/` folder will be installed. However, with the `--conda-prefix` option specified, Snakemake will store and reuse these conda environments for future runs.

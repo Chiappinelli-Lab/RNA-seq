@@ -10,7 +10,8 @@ The pipeline steps are as follows:
 4. QC report generation - MultiQC
 5. Gene and TE subfamily read calling - TEtranscripts
 6. Locus-specific TE read calling - Telescope
-7. Combine count files from TEtranscripts and Telescope - combine_counts
+7. Locus-specific TE read calling - TElocal
+8. Combine count files from TEtranscripts, Telescope, and TElocal - combine_counts
 
 REQUIREMENTS:
 Raw data:
@@ -25,9 +26,10 @@ Folder structure:
 - This file, RNAseq.standard.Snakemake.cluster.config.yaml, and RNAseq.standard.Snakemake.config.yaml must be in the working directory
 - Environment yaml files must be in the envs/ folder. The environment yaml files are:
     - fastqc.yaml
-    - trimgalore.yaml
+    - trimGalore.yaml
     - tetranscripts.yaml
     - telescope.yaml
+    - telocal.yaml
     - combine_counts.yaml
 - All subfolders will be created automatically
 
@@ -35,9 +37,11 @@ TO RUN THE PIPELINE:
 1. start a new tmux session with the command tmux new-session -s <session name>
 2. Run the following command:
 snakemake -s RNAseq.standard.Snakefile -j 100 --configfile RNAseq.standard.Snakemake.config.yaml --cluster-config RNAseq.standard.Snakemake.cluster.config.yaml --cluster "sbatch -o {cluster.output} -e {cluster.err} -p {cluster.p} -N {cluster.N} -J {cluster.jobName} -t {cluster.time} --mail-user={cluster.mail-user} --mail-type={cluster.mail-type}"
-3. Snakemake will create two count tables located in the results/ folder:
-    - telescope_counts.tsv
-    - tetranscripts_counts.tsv
+3. Snakemake will create four count tables located in the results/ folder:
+    - telescope_counts.tsv # this file is ready for input into DESeq2
+    - tetranscripts_counts.tsv # this file is ready for input into DESeq2
+    - telocal_counts.tsv # this file is ready for input into DESeq2
+    - telocal_counts_annotated.tsv # this file contains the RepeatMasker annotations and chromosome positions
 """
 
 import os
@@ -56,9 +60,9 @@ assert 'raw_file_extension' in config, "Missing field in configfile -- 'raw_file
 assert 'read_length' in config, "Missing field in configfile -- 'read_length'"
 assert 'STAR_genomeDir' in config, "Missing field in configfile -- 'STAR_genomeDir'"
 assert 'STAR_GTF' in config, "Missing field in configfile -- 'STAR_GTF'"
-assert 'TEtrx_GTF' in config, "Missing field in configfile -- 'TEtrx_GTF'"
 assert 'TEtrx_TE' in config, "Missing field in configfile -- 'TEtrx_TE'"
 assert 'Telescope_GTF' in config, "Missing field in configfile -- 'Telescope_GTF'"
+assert 'TEloc_TE' in config, "Missing field in configfile -- 'TEloc_GTF'"
 
 # Check that each field is filled in and properly formatted
 # Working dir
@@ -78,22 +82,22 @@ assert path.exists(config['STAR_genomeDir']), "config file: STAR_genomeDir " + c
 # STAR GTF
 assert len(config['STAR_GTF']) > 0, "config file: Please provide a STAR GTF file (STAR_GTF)."
 assert path.exists(config['STAR_GTF']), "config file: STAR_GTF " + config['STAR_GTF'] + " does not exist."
-# TEtranscripts GTF
-assert len(config['TEtrx_GTF']) > 0, "config file: Please provide a TEtranscripts GTF file (TEtrx_GTF)."
-assert path.exists(config['TEtrx_GTF']), "config file: TEtrx_GTF " + config['TEtrx_GTF'] + " does not exist."
 # TEtranscripts TE
 assert len(config['TEtrx_TE']) > 0, "config file: Please provide a TEtranscripts TE file (TEtrx_TE)."
 assert path.exists(config['TEtrx_TE']), "config file: TEtrx_TE " + config['TEtrx_TE'] + " does not exist."
 # Telescope GTF
 assert len(config['Telescope_GTF']) > 0, "config file: Please provide a Telescope GTF file (Telescope_GTF)."
 assert path.exists(config['Telescope_GTF']), "config file: Telescope_GTF " + config['Telescope_GTF'] + " does not exist."
+# TElocal TE
+assert len(config['TEloc_TE']) > 0, "config file: Please provide a TElocal TE file (TEloc_TE)."
+assert path.exists(config['TEloc_TE']), "config file: TEloc_TE " + config['TEloc_TE'] + " does not exist."
 
 # Store some of the config values as variables
 working_dir = config['working_dir']
 raw_file_ext = config['raw_file_extension']
 
 # Create output directories for each rule
-for rule in ["FastQC", "TrimGalore", "STAR", "MultiQC", "TEtranscripts", "Telescope"]:
+for rule in ["FastQC", "TrimGalore", "STAR", "MultiQC", "TEtranscripts", "Telescope", "TElocal"]:
     os.makedirs(f"outputs/{rule}", exist_ok=True)
 
 ############################################################################################################
@@ -125,6 +129,7 @@ rule all:
         expand(working_dir + "star/{sample}/{sample}_Aligned.out.bam", sample=sample_ids),
         expand(working_dir + "TEtranscripts/{sample}-tetranscripts.cntTable", sample=sample_ids),
         expand(working_dir + "telescope/{sample}-TE_counts.tsv", sample=sample_ids),
+        expand(working_dir + "TElocal/{sample}-telocal.cntTable", sample=sample_ids),
         working_dir + "multiqc/multiqc_report.html",
         working_dir + "lists/combined_count_files.txt",
         working_dir + "results/telescope_counts.tsv",
@@ -301,7 +306,7 @@ rule TEtranscripts:
     params:
         output_dir = working_dir + 'TEtranscripts',
         strandedness = config['TEtrx_strandedness'],
-        gtf = config['TEtrx_GTF'],
+        gtf = config['STAR_GTF'],
         te = config['TEtrx_TE']
     
     conda:
@@ -360,12 +365,47 @@ rule Telescope:
         &> {log}
         """
 
+rule TElocal:
+    message: "Running TElocal for {wildcards.sample}"
+    
+    input:
+        working_dir + 'star/{sample}/{sample}_Aligned.out.bam',
+    
+    output:
+        working_dir + 'TElocal/{sample}-telocal.cntTable',
+
+    log: 'logs/TElocal/TElocal.{sample}.log'
+
+    params:
+        output_dir = working_dir + 'TElocal',
+        strandedness = config['TEtrx_strandedness'],
+        gtf = config['STAR_GTF'],
+        te = config['TEloc_TE']
+    
+    conda:
+        config['envs']['telocal']
+
+    shell:
+        """
+        # Create the output directory
+        mkdir -p {params.output_dir}
+
+        # Run TElocal
+        TElocal --mode multi --stranded {params.strandedness} \
+        -b {input} \
+        --GTF {params.gtf} \
+        --TE {params.te} \
+        --project TElocal/{wildcards.sample}-telocal \
+        &> {log}
+        """
+
 rule create_count_file_list:
     message: "Creating a list of count files for combining"
     
     input:
         telescope_files = expand(working_dir + "telescope/{sample}-TE_counts.tsv", sample=sample_ids),
-        tetranscripts_files = expand(working_dir + "TEtranscripts/{sample}-tetranscripts.cntTable", sample=sample_ids)
+        tetranscripts_files = expand(working_dir + "TEtranscripts/{sample}-tetranscripts.cntTable", sample=sample_ids),
+        telocal_files = expand(working_dir + "TElocal/{sample}-telocal.cntTable", sample=sample_ids)
     
     output:
         combined_list = working_dir + "lists/combined_count_files.txt"
@@ -386,6 +426,10 @@ rule create_count_file_list:
             # Write tetranscripts file paths
             for file in input.tetranscripts_files:
                 f.write(f"{path.abspath(file)}\n")
+            
+            # Write telocal file paths
+            for file in input.telocal_files:
+                f.write(f"{path.abspath(file)}\n")
 
 rule combine_counts:
     message: "Combining count files"
@@ -395,7 +439,9 @@ rule combine_counts:
     
     output:
         telescope_counts = working_dir + "results/telescope_counts.tsv",
-        tetranscripts_counts = working_dir + "results/tetranscripts_counts.tsv"
+        tetranscripts_counts = working_dir + "results/tetranscripts_counts.tsv",
+        telocal_counts = working_dir + "results/telocal_counts.tsv",
+        telocal_counts_annt = working_dir + "results/telocal_counts_annotated.tsv"
     
     params:
         output_dir = working_dir + "results"
@@ -413,4 +459,7 @@ rule combine_counts:
 
         # Run for tetranscripts counts
         python scripts/combine_counts.py {input.combined_list} {params.output_dir} -mode tetranscripts
+
+        # Run for telocal counts
+        python scripts/combine_counts.py {input.combined_list} {params.output_dir} -mode telocal
         """
