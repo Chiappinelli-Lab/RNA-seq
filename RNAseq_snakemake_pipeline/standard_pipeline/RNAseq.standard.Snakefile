@@ -404,7 +404,7 @@ rule create_count_file_list:
     
     input:
         telescope_files = expand(working_dir + "telescope/{sample}-TE_counts.tsv", sample=sample_ids),
-        tetranscripts_files = expand(working_dir + "TEtranscripts/{sample}-tetranscripts.cntTable", sample=sample_ids)
+        tetranscripts_files = expand(working_dir + "TEtranscripts/{sample}-tetranscripts.cntTable", sample=sample_ids),
         telocal_files = expand(working_dir + "TElocal/{sample}-telocal.cntTable", sample=sample_ids)
     
     output:
@@ -439,8 +439,8 @@ rule combine_counts:
     
     output:
         telescope_counts = working_dir + "results/telescope_counts.tsv",
-        tetranscripts_counts = working_dir + "results/tetranscripts_counts.tsv"
-        telocal_counts = working_dir + "results/telocal_counts.tsv"
+        tetranscripts_counts = working_dir + "results/tetranscripts_counts.tsv",
+        telocal_counts = working_dir + "results/telocal_counts.tsv",
         telocal_counts_annt = working_dir + "results/telocal_counts_annotated.tsv"
     
     params:
