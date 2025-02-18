@@ -5,7 +5,7 @@ channels:
   - conda-forge
 dependencies:
   - python=2.7
-  - pysam[version='>0.9']
-  - argparse
+  - pysam=0.15.4
+  - argparse=1.4.0
   - pip:
       - telocal==1.1.1
