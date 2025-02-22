@@ -4,4 +4,4 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - trim-galore
+  - trim-galore=0.6.10
