@@ -25,12 +25,6 @@ STAR:
   jobName: '{rule}.{wildcards.sample}'
   output: outputs/{rule}/{rule}.{wildcards.sample}.%j.out
   err: outputs/{rule}/{rule}.{wildcards.sample}.%j.err
-MultiQC:
-  time: '00:30:0'
-  p: nano
-  jobName: '{rule}'
-  output: outputs/{rule}/{rule}.%j.out
-  err: outputs/{rule}/{rule}.%j.err
 TEtranscripts:
   time: '10:00:0'
   p: 'defq,short'

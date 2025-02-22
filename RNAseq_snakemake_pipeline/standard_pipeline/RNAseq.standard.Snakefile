@@ -51,7 +51,7 @@ from os import path
 configfile: "RNAseq.standard.Snakemake.config.yaml"
 
 # Specify the local rules
-localrules: create_count_file_list, combine_counts, all
+localrules: MultiQC, create_count_file_list, combine_counts, all
 
 #### Validate the config file ###############################################
 # Check that the config file exists
@@ -97,7 +97,7 @@ working_dir = config['working_dir']
 raw_file_ext = config['raw_file_extension']
 
 # Create output directories for each rule
-for rule in ["FastQC", "TrimGalore", "STAR", "MultiQC", "TEtranscripts", "Telescope", "TElocal"]:
+for rule in ["FastQC", "TrimGalore", "STAR", "TEtranscripts", "Telescope", "TElocal"]:
     os.makedirs(f"outputs/{rule}", exist_ok=True)
 
 ############################################################################################################
@@ -133,7 +133,10 @@ rule all:
         working_dir + "multiqc/multiqc_report.html",
         working_dir + "lists/combined_count_files.txt",
         working_dir + "results/telescope_counts.tsv",
-        working_dir + "results/tetranscripts_counts.tsv"
+        working_dir + "results/tetranscripts_counts.tsv",
+        working_dir + "results/telocal_counts.tsv",
+        working_dir + "results/telocal_counts_annotated.tsv"
+
     shell:
         "echo '--- Snakemake Pipeline Completed Successfully! ---'"
 
@@ -263,9 +266,12 @@ rule MultiQC:
     
     input:
         # Gather the FastQC reports from raw reads
-        fastqc = expand(working_dir + "FastQC/{sample}_{read}_fastqc.html", sample=sample_ids, read=["R1", "R2"]),
-        trimmed_read1 = expand(working_dir + 'trimgalore/{sample}_R1_val_1_fastqc.html', sample=sample_ids),
-        trimmed_read2 = expand(working_dir + 'trimgalore/{sample}_R2_val_2_fastqc.html', sample=sample_ids),
+        fastqc_html = expand(working_dir + "FastQC/{sample}_{read}_fastqc.html", sample=sample_ids, read=["R1", "R2"]),
+        fastqc_zip = expand(working_dir + "FastQC/{sample}_{read}_fastqc.zip", sample=sample_ids, read=["R1", "R2"]),
+        trimmed_read1_html = expand(working_dir + 'trimgalore/{sample}_R1_val_1_fastqc.html', sample=sample_ids),
+        trimmed_read1_zip = expand(working_dir + 'trimgalore/{sample}_R1_val_1_fastqc.zip', sample=sample_ids),
+        trimmed_read2_html = expand(working_dir + 'trimgalore/{sample}_R2_val_2_fastqc.html', sample=sample_ids),
+        trimmed_read2_zip = expand(working_dir + 'trimgalore/{sample}_R2_val_2_fastqc.zip', sample=sample_ids),
         star = expand(working_dir + "star/{sample}/{sample}_Log.final.out", sample=sample_ids)
     
     output:
