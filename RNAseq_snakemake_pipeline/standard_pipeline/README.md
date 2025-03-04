@@ -1,5 +1,8 @@
 # RNA-seq snakemake pipeline - standard pipeline
 
+## Snakemake Workflow DAG
+![Snakemake DAG](../docs/standard_rnaseq_dag.png)
+
 This is a snakemake pipeline for RNA-seq analysis of repetitive element expression. This is a basic pipeline that process RNA-seq data according to our standard workflow and generates combined count tables containing raw counts from TEtranscripts, Telescope, and TElocal. TEtranscripts is a software that quantifies repetitive element expression at the subfamily level, while Telescope and TElocal quantify repetitive element expression at the locus-specific level. This pipeline generates four count tables, one for TEtranscripts, one for Telescope, and one for TElocal that contains gene + subfamily TE raw counts and gene + locus TE raw counts, respectively for all samples. The fourth count table that is generated contains the counts and RepeatMasker annotations/genomic coordinates for the repetitive elements identified in TElocal. This pipeline is designed to be run on a SLURM cluster.
 
 The standard pipeline steps are as follows:
