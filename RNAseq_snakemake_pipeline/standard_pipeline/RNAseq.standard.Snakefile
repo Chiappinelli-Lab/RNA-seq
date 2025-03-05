@@ -58,11 +58,16 @@ localrules: MultiQC, create_count_file_list, combine_counts, all
 assert 'working_dir' in config, "Missing field in configfile -- 'working_dir'"
 assert 'raw_file_extension' in config, "Missing field in configfile -- 'raw_file_extension'"
 assert 'read_length' in config, "Missing field in configfile -- 'read_length'"
+assert 'TEtrx_strandedness' in config, "Missing field in configfile -- 'TEtrx_strandedness'"
+assert 'Tel_strandedness' in config, "Missing field in configfile -- 'Tel_strandedness'"
+assert 'Picard_strandedness' in config, "Missing field in configfile -- 'Picard_strandedness'"
 assert 'STAR_genomeDir' in config, "Missing field in configfile -- 'STAR_genomeDir'"
 assert 'STAR_GTF' in config, "Missing field in configfile -- 'STAR_GTF'"
+assert 'REF_FLAT' in config, "Missing field in configfile -- 'REF_FLAT'"
+assert 'rRNA_interval_list' in config, "Missing field in configfile -- 'rRNA_interval_list'"
 assert 'TEtrx_TE' in config, "Missing field in configfile -- 'TEtrx_TE'"
 assert 'Telescope_GTF' in config, "Missing field in configfile -- 'Telescope_GTF'"
-assert 'TEloc_TE' in config, "Missing field in configfile -- 'TEloc_GTF'"
+assert 'TEloc_TE' in config, "Missing field in configfile -- 'TEloc_TE'"
 
 # Check that each field is filled in and properly formatted
 # Working dir
@@ -76,12 +81,24 @@ if config['raw_file_extension'].endswith('gz') == False: #just warn if it doesnt
     print("WARNING: config file: raw_file_extension does not end in 'gz'. Raw files must be gzipped!")
 # Read length
 assert config['read_length'] > 0, "config file: Please provide a read length (read_length)."
+# TEtranscripts strandedness
+assert config['TEtrx_strandedness'] in ['no', 'forward', 'reverse'], "config file: TEtranscripts strandedness must be 'no', 'forward', or 'reverse'."
+# Telescope strandedness
+assert config['Tel_strandedness'] in ['None', 'FR', 'RF'], "config file: Telescope strandedness must be 'None', 'FR', or 'RF'."
+# Picard strandedness
+assert config['Picard_strandedness'] in ['NONE', 'FIRST_READ_TRANSCRIPTION_STRAND', 'SECOND_READ_TRANSCRIPTION_STRAND'], "config file: Picard strandedness must be 'NONE', 'FIRST_READ_TRANSCRIPTION_STRAND', or 'SECOND_READ_TRANSCRIPTION_STRAND'."
 # STAR genomeDir
 assert len(config['STAR_genomeDir']) > 0, "config file: Please provide a STAR genomeDir (STAR_genomeDir)."
 assert path.exists(config['STAR_genomeDir']), "config file: STAR_genomeDir " + config['STAR_genomeDir'] + " does not exist."
 # STAR GTF
 assert len(config['STAR_GTF']) > 0, "config file: Please provide a STAR GTF file (STAR_GTF)."
 assert path.exists(config['STAR_GTF']), "config file: STAR_GTF " + config['STAR_GTF'] + " does not exist."
+# REF_FLAT
+assert len(config['REF_FLAT']) > 0, "config file: Please provide a REF_FLAT file (REF_FLAT)."
+assert path.exists(config['REF_FLAT']), "config file: REF_FLAT " + config['REF_FLAT'] + " does not exist."
+# rRNA_intervals
+assert len(config['rRNA_interval_list']) > 0, "config file: Please provide a rRNA interval list file (rRNA_interval_list)."
+assert path.exists(config['rRNA_interval_list']), "config file: rRNA_interval_list " + config['rRNA_interval_list'] + " does not exist."
 # TEtranscripts TE
 assert len(config['TEtrx_TE']) > 0, "config file: Please provide a TEtranscripts TE file (TEtrx_TE)."
 assert path.exists(config['TEtrx_TE']), "config file: TEtrx_TE " + config['TEtrx_TE'] + " does not exist."
@@ -127,6 +144,11 @@ rule all:
         expand(working_dir + "trimgalore/{sample}_R2_val_2_fastqc.html", sample=sample_ids),
         expand(working_dir + "trimgalore/{sample}_{read}.fastq.gz_trimming_report.txt", sample=sample_ids, read=["R1", "R2"]),
         expand(working_dir + "star/{sample}/{sample}_Aligned.out.bam", sample=sample_ids),
+        expand(working_dir + "star/{sample}/{sample}_Log.final.out", sample=sample_ids),
+        expand(working_dir + "star/{sample}/{sample}_Log.out", sample=sample_ids),
+        expand(working_dir + "star/{sample}/{sample}_Log.progress.out", sample=sample_ids),
+        expand(working_dir + "star/{sample}/{sample}_SJ.out.tab", sample=sample_ids),
+        expand(working_dir + "star/{sample}/{sample}_rnaseq_metrics.txt", sample=sample_ids),
         expand(working_dir + "TEtranscripts/{sample}-tetranscripts.cntTable", sample=sample_ids),
         expand(working_dir + "telescope/{sample}-TE_counts.tsv", sample=sample_ids),
         expand(working_dir + "TElocal/{sample}-telocal.cntTable", sample=sample_ids),
@@ -261,6 +283,38 @@ rule STAR:
             &> {log}
         """
 
+rule CollectRnaSeqMetrics:
+    message: "Running CollectRnaSeqMetrics for {wildcards.sample}"
+    
+    input:
+        bam = working_dir + 'star/{sample}/{sample}_Aligned.out.bam',
+    
+    output:
+        working_dir + 'star/{sample}/{sample}_rnaseq_metrics.txt',
+    
+    log:
+        working_dir + 'logs/star/{sample}_rnaseq_metrics.log'
+    
+    params:
+        ref_flat = config['REF_FLAT'],
+        rRNA_intervals = config['rRNA_intervals'],
+        strandedness = config['Picard_strandedness']
+    
+    conda:
+        config['envs']['picard']
+    
+    shell:
+        """
+        # Run CollectRnaseqMetrics
+        picard CollectRnaSeqMetrics \
+            --INPUT {input.bam} \
+            --OUTPUT {output} \
+            --REF_FLAT {params.ref_flat} \
+            --RIBOSOMAL_INTERVALS {params.rRNA_intervals} \
+            --STRAND_SPECIFICITY {params.strandedness} \
+            &> {log}
+        """
+
 rule MultiQC:
     message: "Running MultiQC"
     
@@ -272,7 +326,8 @@ rule MultiQC:
         trimmed_read1_zip = expand(working_dir + 'trimgalore/{sample}_R1_val_1_fastqc.zip', sample=sample_ids),
         trimmed_read2_html = expand(working_dir + 'trimgalore/{sample}_R2_val_2_fastqc.html', sample=sample_ids),
         trimmed_read2_zip = expand(working_dir + 'trimgalore/{sample}_R2_val_2_fastqc.zip', sample=sample_ids),
-        star = expand(working_dir + "star/{sample}/{sample}_Log.final.out", sample=sample_ids)
+        star = expand(working_dir + "star/{sample}/{sample}_Log.final.out", sample=sample_ids),
+        picard = expand(working_dir + "star/{sample}/{sample}_rnaseq_metrics.txt", sample=sample_ids)
     
     output:
         working_dir + "multiqc/multiqc_report.html",

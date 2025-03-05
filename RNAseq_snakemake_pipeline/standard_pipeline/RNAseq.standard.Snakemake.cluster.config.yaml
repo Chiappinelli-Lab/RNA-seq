@@ -16,11 +16,17 @@ FastQC:
   output: outputs/{rule}/{rule}.{wildcards.sample}.{wildcards.read}.%j.out
   err: outputs/{rule}/{rule}.{wildcards.sample}.{wildcards.read}.%j.err
 TrimGalore:
-  time: '4:00:0'
+  time: '10:00:0'
+  p: 'defq,short'
   jobName: '{rule}.{wildcards.sample}'
   output: outputs/{rule}/{rule}.{wildcards.sample}.%j.out
   err: outputs/{rule}/{rule}.{wildcards.sample}.%j.err
 STAR:
+  time: '4:00:0'
+  jobName: '{rule}.{wildcards.sample}'
+  output: outputs/{rule}/{rule}.{wildcards.sample}.%j.out
+  err: outputs/{rule}/{rule}.{wildcards.sample}.%j.err
+CollectRnaSeqMetrics:
   time: '4:00:0'
   jobName: '{rule}.{wildcards.sample}'
   output: outputs/{rule}/{rule}.{wildcards.sample}.%j.out
