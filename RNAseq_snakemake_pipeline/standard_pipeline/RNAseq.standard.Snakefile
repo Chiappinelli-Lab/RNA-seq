@@ -365,6 +365,52 @@ rule MultiQC:
             &> {log}
         """
 
+rule alignment_summary:
+    message: "Creating alignment summary"
+
+    input:
+        star_multiqc = working_dir + "multiqc/multiqc_data/multiqc_star.txt",
+        picard_multiqc = working_dir + "multiqc/multiqc_data/multiqc_picard_RnaSeqMetrics.txt"
+
+    output:
+        summary = working_dir + "results/alignment_summary.csv"
+
+    run:
+        import pandas as pd
+        
+        # Read STAR alignment stats
+        star_df = pd.read_csv(input.star_multiqc, sep="\t")
+        star_cols = ["Sample", "total_reads", "uniquely_mapped", "uniquely_mapped_percent", "multimapped", "multimapped_percent"]
+        star_df = star_df[star_cols]
+
+        # Our data is paired-end, so we need to multiply the read counts by 2. This is because STAR counts a paired-end read as one read.
+        star_df["total_reads"] = star_df["total_reads"] * 2
+        star_df["uniquely_mapped"] = star_df["uniquely_mapped"] * 2
+        star_df["multimapped"] = star_df["multimapped"] * 2
+
+        # Read Picard RNA metrics
+        picard_df = pd.read_csv(input.picard_multiqc, sep="\t")
+        picard_cols = ["Sample", "PCT_RIBOSOMAL_BASES", "PCT_MRNA_BASES"]
+        picard_df = picard_df[picard_cols]
+
+        # Remove "sorted_" prefix from sample names
+        picard_df["Sample"] = picard_df["Sample"].str.replace("^sorted_", "", regex=True)
+
+        # Convert rRNA percentage from fraction to percent
+        picard_df["% rRNA"] = (picard_df["PCT_RIBOSOMAL_BASES"] * 100).round(2)
+
+        # Convert mRNA percentage from fraction to percent
+        picard_df["% mRNA"] = (picard_df["PCT_MRNA_BASES"] * 100).round(2)
+
+        # Drop the original columns
+        picard_df.drop(columns=["PCT_RIBOSOMAL_BASES", "PCT_MRNA_BASES"], inplace=True)
+
+        # Merge both tables
+        summary_df = star_df.merge(picard_df, on="Sample", how="outer")
+
+        # Save the output
+        summary_df.to_csv(output.summary, index=False)
+
 rule TEtranscripts:
     message: "Running TEtranscripts for {wildcards.sample}"
     
