@@ -7,11 +7,12 @@ The pipeline steps are as follows:
 1. Initial QC - FastQC
 2. Adapter/read trimming and 2nd pass QC on trimmed data - TrimGalore
 3. Read alignment - STAR
-4. QC report generation - MultiQC
-5. Gene and TE subfamily read calling - TEtranscripts
-6. Locus-specific TE read calling - Telescope
-7. Locus-specific TE read calling - TElocal
-8. Combine count files from TEtranscripts, Telescope, and TElocal - combine_counts
+4. Alignment QC - CollectRnaSeqMetrics from Picard
+5. QC report generation - MultiQC
+6. Gene and TE subfamily read calling - TEtranscripts
+7. Locus-specific TE read calling - Telescope
+8. Locus-specific TE read calling - TElocal
+9. Combine count files from TEtranscripts, Telescope, and TElocal - combine_counts
 
 REQUIREMENTS:
 Raw data:
@@ -27,6 +28,7 @@ Folder structure:
 - Environment yaml files must be in the envs/ folder. The environment yaml files are:
     - fastqc.yaml
     - trimGalore.yaml
+    - picard.yaml
     - tetranscripts.yaml
     - telescope.yaml
     - telocal.yaml
@@ -114,7 +116,7 @@ working_dir = config['working_dir']
 raw_file_ext = config['raw_file_extension']
 
 # Create output directories for each rule
-for rule in ["FastQC", "TrimGalore", "STAR", "TEtranscripts", "Telescope", "TElocal"]:
+for rule in ["FastQC", "TrimGalore", "STAR", "CollectRnaSeqMetrics", "TEtranscripts", "Telescope", "TElocal"]:
     os.makedirs(f"outputs/{rule}", exist_ok=True)
 
 ############################################################################################################
@@ -144,11 +146,12 @@ rule all:
         expand(working_dir + "trimgalore/{sample}_R2_val_2_fastqc.html", sample=sample_ids),
         expand(working_dir + "trimgalore/{sample}_{read}.fastq.gz_trimming_report.txt", sample=sample_ids, read=["R1", "R2"]),
         expand(working_dir + "star/{sample}/{sample}_Aligned.out.bam", sample=sample_ids),
+        expand(working_dir + "star/{sample}/sorted_{sample}_Aligned.out.bam", sample=sample_ids),
         expand(working_dir + "star/{sample}/{sample}_Log.final.out", sample=sample_ids),
         expand(working_dir + "star/{sample}/{sample}_Log.out", sample=sample_ids),
         expand(working_dir + "star/{sample}/{sample}_Log.progress.out", sample=sample_ids),
         expand(working_dir + "star/{sample}/{sample}_SJ.out.tab", sample=sample_ids),
-        expand(working_dir + "star/{sample}/{sample}_rnaseq_metrics.txt", sample=sample_ids),
+        expand(working_dir + "CollectRnaSeqMetrics/{sample}_rnaseq_metrics.txt", sample=sample_ids),
         expand(working_dir + "TEtranscripts/{sample}-tetranscripts.cntTable", sample=sample_ids),
         expand(working_dir + "telescope/{sample}-TE_counts.tsv", sample=sample_ids),
         expand(working_dir + "TElocal/{sample}-telocal.cntTable", sample=sample_ids),
@@ -242,6 +245,7 @@ rule STAR:
     
     output:
         bam = working_dir + 'star/{sample}/{sample}_Aligned.out.bam',
+        sorted_bam = working_dir + 'star/{sample}/sorted_{sample}_Aligned.out.bam',
         final_log = working_dir + 'star/{sample}/{sample}_Log.final.out',
         log_out = working_dir + 'star/{sample}/{sample}_Log.out',
         progress = working_dir + 'star/{sample}/{sample}_Log.progress.out',
@@ -281,23 +285,28 @@ rule STAR:
             --outFilterMultimapNmax {params.multimap_nmax} \
             --outFileNamePrefix {params.prefix} \
             &> {log}
+        
+        # Sort the BAM file using samtools. This is necessary for Picard's CollectRnaSeqMetrics.
+        ml samtools
+        samtools sort -o {output.sorted_bam} {output.bam}
         """
 
 rule CollectRnaSeqMetrics:
     message: "Running CollectRnaSeqMetrics for {wildcards.sample}"
     
     input:
-        bam = working_dir + 'star/{sample}/{sample}_Aligned.out.bam',
+        bam = working_dir + 'star/{sample}/sorted_{sample}_Aligned.out.bam',
     
     output:
-        working_dir + 'star/{sample}/{sample}_rnaseq_metrics.txt',
+        working_dir + 'CollectRnaSeqMetrics/{sample}_rnaseq_metrics.txt',
     
     log:
-        working_dir + 'logs/star/{sample}_rnaseq_metrics.log'
+        working_dir + 'logs/CollectRnaSeqMetrics/{sample}_rnaseq_metrics.log'
     
     params:
+        outdir = working_dir + 'CollectRnaSeqMetrics',
         ref_flat = config['REF_FLAT'],
-        rRNA_intervals = config['rRNA_intervals'],
+        rRNA_intervals = config['rRNA_interval_list'],
         strandedness = config['Picard_strandedness']
     
     conda:
@@ -305,6 +314,9 @@ rule CollectRnaSeqMetrics:
     
     shell:
         """
+        # Create the output directory
+        mkdir -p {params.outdir}
+
         # Run CollectRnaseqMetrics
         picard CollectRnaSeqMetrics \
             --INPUT {input.bam} \
@@ -327,7 +339,7 @@ rule MultiQC:
         trimmed_read2_html = expand(working_dir + 'trimgalore/{sample}_R2_val_2_fastqc.html', sample=sample_ids),
         trimmed_read2_zip = expand(working_dir + 'trimgalore/{sample}_R2_val_2_fastqc.zip', sample=sample_ids),
         star = expand(working_dir + "star/{sample}/{sample}_Log.final.out", sample=sample_ids),
-        picard = expand(working_dir + "star/{sample}/{sample}_rnaseq_metrics.txt", sample=sample_ids)
+        picard = expand(working_dir + "CollectRnaSeqMetrics/{sample}_rnaseq_metrics.txt", sample=sample_ids)
     
     output:
         working_dir + "multiqc/multiqc_report.html",
@@ -377,11 +389,6 @@ rule TEtranscripts:
         """
         # Create the output directory
         mkdir -p {params.output_dir}
-
-        # Load the required modules
-        ml R/3.4.4
-        ml gcc/8.2.0
-        ml xz/5.2.5
 
         # Run TEtranscripts
         TEcount --format BAM --mode multi --stranded {params.strandedness} \
