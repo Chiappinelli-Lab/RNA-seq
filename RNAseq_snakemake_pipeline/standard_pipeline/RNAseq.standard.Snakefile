@@ -7,8 +7,8 @@ The pipeline steps are as follows:
 1. Initial QC - FastQC
 2. Adapter/read trimming and 2nd pass QC on trimmed data - TrimGalore
 3. Read alignment - STAR
-4. Alignment QC - CollectRnaSeqMetrics from Picard
-5. QC report generation - MultiQC
+4. QC report generation - MultiQC
+5. Alignment QC - CollectRnaSeqMetrics from Picard
 6. Gene and TE subfamily read calling - TEtranscripts
 7. Locus-specific TE read calling - Telescope
 8. Locus-specific TE read calling - TElocal
@@ -53,7 +53,7 @@ from os import path
 configfile: "RNAseq.standard.Snakemake.config.yaml"
 
 # Specify the local rules
-localrules: MultiQC, create_count_file_list, combine_counts, all
+localrules: MultiQC, alignment_summary, create_count_file_list, combine_counts, all
 
 #### Validate the config file ###############################################
 # Check that the config file exists
@@ -157,6 +157,7 @@ rule all:
         expand(working_dir + "TElocal/{sample}-telocal.cntTable", sample=sample_ids),
         working_dir + "multiqc/multiqc_report.html",
         working_dir + "lists/combined_count_files.txt",
+        working_dir + "results/alignment_summary.csv",
         working_dir + "results/telescope_counts.tsv",
         working_dir + "results/tetranscripts_counts.tsv",
         working_dir + "results/telocal_counts.tsv",
