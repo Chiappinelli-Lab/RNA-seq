@@ -8,10 +8,11 @@ The pipeline steps are as follows:
 2. Adapter/read trimming and 2nd pass QC on trimmed data - TrimGalore
 3. Read alignment - STAR
 4. QC report generation - MultiQC
-5. Gene and TE subfamily read calling - TEtranscripts
-6. Locus-specific TE read calling - Telescope
-7. Locus-specific TE read calling - TElocal
-8. Combine count files from TEtranscripts, Telescope, and TElocal - combine_counts
+5. Alignment QC - CollectRnaSeqMetrics from Picard
+6. Gene and TE subfamily read calling - TEtranscripts
+7. Locus-specific TE read calling - Telescope
+8. Locus-specific TE read calling - TElocal
+9. Combine count files from TEtranscripts, Telescope, and TElocal - combine_counts
 
 REQUIREMENTS:
 Raw data:
@@ -27,6 +28,7 @@ Folder structure:
 - Environment yaml files must be in the envs/ folder. The environment yaml files are:
     - fastqc.yaml
     - trimGalore.yaml
+    - picard.yaml
     - tetranscripts.yaml
     - telescope.yaml
     - telocal.yaml
@@ -51,18 +53,23 @@ from os import path
 configfile: "RNAseq.standard.Snakemake.config.yaml"
 
 # Specify the local rules
-localrules: MultiQC, create_count_file_list, combine_counts, all
+localrules: MultiQC, alignment_summary, create_count_file_list, combine_counts, all
 
 #### Validate the config file ###############################################
 # Check that the config file exists
 assert 'working_dir' in config, "Missing field in configfile -- 'working_dir'"
 assert 'raw_file_extension' in config, "Missing field in configfile -- 'raw_file_extension'"
 assert 'read_length' in config, "Missing field in configfile -- 'read_length'"
+assert 'TEtrx_strandedness' in config, "Missing field in configfile -- 'TEtrx_strandedness'"
+assert 'Tel_strandedness' in config, "Missing field in configfile -- 'Tel_strandedness'"
+assert 'Picard_strandedness' in config, "Missing field in configfile -- 'Picard_strandedness'"
 assert 'STAR_genomeDir' in config, "Missing field in configfile -- 'STAR_genomeDir'"
 assert 'STAR_GTF' in config, "Missing field in configfile -- 'STAR_GTF'"
+assert 'REF_FLAT' in config, "Missing field in configfile -- 'REF_FLAT'"
+assert 'rRNA_interval_list' in config, "Missing field in configfile -- 'rRNA_interval_list'"
 assert 'TEtrx_TE' in config, "Missing field in configfile -- 'TEtrx_TE'"
 assert 'Telescope_GTF' in config, "Missing field in configfile -- 'Telescope_GTF'"
-assert 'TEloc_TE' in config, "Missing field in configfile -- 'TEloc_GTF'"
+assert 'TEloc_TE' in config, "Missing field in configfile -- 'TEloc_TE'"
 
 # Check that each field is filled in and properly formatted
 # Working dir
@@ -76,12 +83,24 @@ if config['raw_file_extension'].endswith('gz') == False: #just warn if it doesnt
     print("WARNING: config file: raw_file_extension does not end in 'gz'. Raw files must be gzipped!")
 # Read length
 assert config['read_length'] > 0, "config file: Please provide a read length (read_length)."
+# TEtranscripts strandedness
+assert config['TEtrx_strandedness'] in ['no', 'forward', 'reverse'], "config file: TEtranscripts strandedness must be 'no', 'forward', or 'reverse'."
+# Telescope strandedness
+assert config['Tel_strandedness'] in ['None', 'FR', 'RF'], "config file: Telescope strandedness must be 'None', 'FR', or 'RF'."
+# Picard strandedness
+assert config['Picard_strandedness'] in ['NONE', 'FIRST_READ_TRANSCRIPTION_STRAND', 'SECOND_READ_TRANSCRIPTION_STRAND'], "config file: Picard strandedness must be 'NONE', 'FIRST_READ_TRANSCRIPTION_STRAND', or 'SECOND_READ_TRANSCRIPTION_STRAND'."
 # STAR genomeDir
 assert len(config['STAR_genomeDir']) > 0, "config file: Please provide a STAR genomeDir (STAR_genomeDir)."
 assert path.exists(config['STAR_genomeDir']), "config file: STAR_genomeDir " + config['STAR_genomeDir'] + " does not exist."
 # STAR GTF
 assert len(config['STAR_GTF']) > 0, "config file: Please provide a STAR GTF file (STAR_GTF)."
 assert path.exists(config['STAR_GTF']), "config file: STAR_GTF " + config['STAR_GTF'] + " does not exist."
+# REF_FLAT
+assert len(config['REF_FLAT']) > 0, "config file: Please provide a REF_FLAT file (REF_FLAT)."
+assert path.exists(config['REF_FLAT']), "config file: REF_FLAT " + config['REF_FLAT'] + " does not exist."
+# rRNA_intervals
+assert len(config['rRNA_interval_list']) > 0, "config file: Please provide a rRNA interval list file (rRNA_interval_list)."
+assert path.exists(config['rRNA_interval_list']), "config file: rRNA_interval_list " + config['rRNA_interval_list'] + " does not exist."
 # TEtranscripts TE
 assert len(config['TEtrx_TE']) > 0, "config file: Please provide a TEtranscripts TE file (TEtrx_TE)."
 assert path.exists(config['TEtrx_TE']), "config file: TEtrx_TE " + config['TEtrx_TE'] + " does not exist."
@@ -97,7 +116,7 @@ working_dir = config['working_dir']
 raw_file_ext = config['raw_file_extension']
 
 # Create output directories for each rule
-for rule in ["FastQC", "TrimGalore", "STAR", "TEtranscripts", "Telescope", "TElocal"]:
+for rule in ["FastQC", "TrimGalore", "STAR", "CollectRnaSeqMetrics", "TEtranscripts", "Telescope", "TElocal"]:
     os.makedirs(f"outputs/{rule}", exist_ok=True)
 
 ############################################################################################################
@@ -127,11 +146,18 @@ rule all:
         expand(working_dir + "trimgalore/{sample}_R2_val_2_fastqc.html", sample=sample_ids),
         expand(working_dir + "trimgalore/{sample}_{read}.fastq.gz_trimming_report.txt", sample=sample_ids, read=["R1", "R2"]),
         expand(working_dir + "star/{sample}/{sample}_Aligned.out.bam", sample=sample_ids),
+        expand(working_dir + "star/{sample}/sorted_{sample}_Aligned.out.bam", sample=sample_ids),
+        expand(working_dir + "star/{sample}/{sample}_Log.final.out", sample=sample_ids),
+        expand(working_dir + "star/{sample}/{sample}_Log.out", sample=sample_ids),
+        expand(working_dir + "star/{sample}/{sample}_Log.progress.out", sample=sample_ids),
+        expand(working_dir + "star/{sample}/{sample}_SJ.out.tab", sample=sample_ids),
+        expand(working_dir + "CollectRnaSeqMetrics/{sample}_rnaseq_metrics.txt", sample=sample_ids),
         expand(working_dir + "TEtranscripts/{sample}-tetranscripts.cntTable", sample=sample_ids),
         expand(working_dir + "telescope/{sample}-TE_counts.tsv", sample=sample_ids),
         expand(working_dir + "TElocal/{sample}-telocal.cntTable", sample=sample_ids),
         working_dir + "multiqc/multiqc_report.html",
         working_dir + "lists/combined_count_files.txt",
+        working_dir + "results/alignment_summary.csv",
         working_dir + "results/telescope_counts.tsv",
         working_dir + "results/tetranscripts_counts.tsv",
         working_dir + "results/telocal_counts.tsv",
@@ -220,6 +246,7 @@ rule STAR:
     
     output:
         bam = working_dir + 'star/{sample}/{sample}_Aligned.out.bam',
+        sorted_bam = working_dir + 'star/{sample}/sorted_{sample}_Aligned.out.bam',
         final_log = working_dir + 'star/{sample}/{sample}_Log.final.out',
         log_out = working_dir + 'star/{sample}/{sample}_Log.out',
         progress = working_dir + 'star/{sample}/{sample}_Log.progress.out',
@@ -259,6 +286,46 @@ rule STAR:
             --outFilterMultimapNmax {params.multimap_nmax} \
             --outFileNamePrefix {params.prefix} \
             &> {log}
+        
+        # Sort the BAM file using samtools. This is necessary for Picard's CollectRnaSeqMetrics.
+        ml samtools
+        samtools sort -o {output.sorted_bam} {output.bam}
+        """
+
+rule CollectRnaSeqMetrics:
+    message: "Running CollectRnaSeqMetrics for {wildcards.sample}"
+    
+    input:
+        bam = working_dir + 'star/{sample}/sorted_{sample}_Aligned.out.bam',
+    
+    output:
+        working_dir + 'CollectRnaSeqMetrics/{sample}_rnaseq_metrics.txt',
+    
+    log:
+        working_dir + 'logs/CollectRnaSeqMetrics/{sample}_rnaseq_metrics.log'
+    
+    params:
+        outdir = working_dir + 'CollectRnaSeqMetrics',
+        ref_flat = config['REF_FLAT'],
+        rRNA_intervals = config['rRNA_interval_list'],
+        strandedness = config['Picard_strandedness']
+    
+    conda:
+        config['envs']['picard']
+    
+    shell:
+        """
+        # Create the output directory
+        mkdir -p {params.outdir}
+
+        # Run CollectRnaseqMetrics
+        picard CollectRnaSeqMetrics \
+            --INPUT {input.bam} \
+            --OUTPUT {output} \
+            --REF_FLAT {params.ref_flat} \
+            --RIBOSOMAL_INTERVALS {params.rRNA_intervals} \
+            --STRAND_SPECIFICITY {params.strandedness} \
+            &> {log}
         """
 
 rule MultiQC:
@@ -272,10 +339,13 @@ rule MultiQC:
         trimmed_read1_zip = expand(working_dir + 'trimgalore/{sample}_R1_val_1_fastqc.zip', sample=sample_ids),
         trimmed_read2_html = expand(working_dir + 'trimgalore/{sample}_R2_val_2_fastqc.html', sample=sample_ids),
         trimmed_read2_zip = expand(working_dir + 'trimgalore/{sample}_R2_val_2_fastqc.zip', sample=sample_ids),
-        star = expand(working_dir + "star/{sample}/{sample}_Log.final.out", sample=sample_ids)
+        star = expand(working_dir + "star/{sample}/{sample}_Log.final.out", sample=sample_ids),
+        picard = expand(working_dir + "CollectRnaSeqMetrics/{sample}_rnaseq_metrics.txt", sample=sample_ids)
     
     output:
         working_dir + "multiqc/multiqc_report.html",
+        working_dir + "multiqc/multiqc_data/multiqc_star.txt",
+        working_dir + "multiqc/multiqc_data/multiqc_picard_RnaSeqMetrics.txt"
     
     params:
         outdir = working_dir + "multiqc"
@@ -297,6 +367,49 @@ rule MultiQC:
             {input} \
             &> {log}
         """
+
+rule alignment_summary:
+    message: "Creating alignment summary"
+
+    input:
+        star_multiqc = working_dir + "multiqc/multiqc_data/multiqc_star.txt",
+        picard_multiqc = working_dir + "multiqc/multiqc_data/multiqc_picard_RnaSeqMetrics.txt"
+
+    output:
+        summary = working_dir + "results/alignment_summary.csv"
+
+    run:
+        import pandas as pd
+        
+        # Read STAR alignment stats
+        star_df = pd.read_csv(input.star_multiqc, sep="\t")
+        star_cols = ["Sample", "total_reads", "uniquely_mapped", "uniquely_mapped_percent", "multimapped", "multimapped_percent"]
+        star_df = star_df[star_cols]
+
+        # Our data is paired-end, so we need to multiply the read counts by 2. This is because STAR counts a paired-end read as one read.
+        star_df["total_reads"] = star_df["total_reads"] * 2
+        star_df["uniquely_mapped"] = star_df["uniquely_mapped"] * 2
+        star_df["multimapped"] = star_df["multimapped"] * 2
+
+        # Read Picard RNA metrics
+        picard_df = pd.read_csv(input.picard_multiqc, sep="\t")
+        picard_cols = ["Sample", "PCT_RIBOSOMAL_BASES", "PCT_MRNA_BASES"]
+        picard_df = picard_df[picard_cols]
+
+        # Remove "sorted_" prefix from sample names
+        picard_df["Sample"] = picard_df["Sample"].str.replace("^sorted_", "", regex=True)
+
+        # Convert rRNA percentage from fraction to percent
+        picard_df["% rRNA"] = (picard_df["PCT_RIBOSOMAL_BASES"] * 100).round(2)
+
+        # Drop the original columns
+        picard_df.drop(columns=["PCT_RIBOSOMAL_BASES"], inplace=True)
+
+        # Merge both tables
+        summary_df = star_df.merge(picard_df, on="Sample", how="outer")
+
+        # Save the output
+        summary_df.to_csv(output.summary, index=False)
 
 rule TEtranscripts:
     message: "Running TEtranscripts for {wildcards.sample}"
@@ -322,11 +435,6 @@ rule TEtranscripts:
         """
         # Create the output directory
         mkdir -p {params.output_dir}
-
-        # Load the required modules
-        ml R/3.4.4
-        ml gcc/8.2.0
-        ml xz/5.2.5
 
         # Run TEtranscripts
         TEcount --format BAM --mode multi --stranded {params.strandedness} \

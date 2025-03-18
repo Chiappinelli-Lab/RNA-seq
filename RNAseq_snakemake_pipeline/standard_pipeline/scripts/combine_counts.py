@@ -113,6 +113,15 @@ def main():
         telocal_output_data_frame.rename(columns={telocal_output_data_frame.columns[0]: "transcript"}, inplace=True)
         telocal_output_data_frame[['TE', 'Subfamily', 'Family', 'Class']] = telocal_output_data_frame['transcript'].str.split(":", expand=True)
         telocal_combined_data_frame = pandas.merge(telocal_output_data_frame, telocal_annt_output_data_frame)
+        
+        # Add in the dsRNA annotations
+        dsRNA_annotation_data_frame = pandas.read_csv(r'/SMHS/groups/chiappinellilab/genomes/hg38/TElocal_dsRNA_annotation/telocal_dsRNA_annotations.csv')
+        IR_annotation_dict = dict(zip(dsRNA_annotation_data_frame['TE'], dsRNA_annotation_data_frame['IR_annotation']))
+        IR_ID_dict = dict(zip(dsRNA_annotation_data_frame['TE'], dsRNA_annotation_data_frame['IR_ID']))
+        telocal_combined_data_frame['IR_annotation'] = telocal_combined_data_frame['TE'].map(IR_annotation_dict)
+        telocal_combined_data_frame['IR_ID'] = telocal_combined_data_frame['TE'].map(IR_ID_dict)
+
+        # Write output
         telocal_combined_data_frame.to_csv(annt_output_path, sep='\t', index=False)
 
     else:
