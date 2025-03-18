@@ -344,6 +344,8 @@ rule MultiQC:
     
     output:
         working_dir + "multiqc/multiqc_report.html",
+        working_dir + "multiqc/multiqc_data/multiqc_star.txt",
+        working_dir + "multiqc/multiqc_data/multiqc_picard_RnaSeqMetrics.txt"
     
     params:
         outdir = working_dir + "multiqc"
@@ -400,11 +402,8 @@ rule alignment_summary:
         # Convert rRNA percentage from fraction to percent
         picard_df["% rRNA"] = (picard_df["PCT_RIBOSOMAL_BASES"] * 100).round(2)
 
-        # Convert mRNA percentage from fraction to percent
-        picard_df["% mRNA"] = (picard_df["PCT_MRNA_BASES"] * 100).round(2)
-
         # Drop the original columns
-        picard_df.drop(columns=["PCT_RIBOSOMAL_BASES", "PCT_MRNA_BASES"], inplace=True)
+        picard_df.drop(columns=["PCT_RIBOSOMAL_BASES"], inplace=True)
 
         # Merge both tables
         summary_df = star_df.merge(picard_df, on="Sample", how="outer")
