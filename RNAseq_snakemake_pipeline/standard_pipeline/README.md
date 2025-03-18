@@ -35,7 +35,7 @@ This pipeline is designed to be run on a SLURM cluster. The cluster configuratio
 
 `conda env create -n snakemake -f snakemake.yaml`
 
-### 4. Create a folder to store conda environments
+#### 4. Create a folder to store conda environments
 
 #### This pipeline will automatically generate conda environments required for some rules. To avoid repetitive installations when running the pipeline in the future, create a folder to store the environments. This can be in your home directory. Below is an example:
 
