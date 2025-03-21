@@ -282,6 +282,7 @@ rule STAR:
             --readFilesIn {input.read1} {input.read2} \
             --readFilesCommand zcat \
             --outSAMtype BAM Unsorted \
+            --outSAMstrandField intronMotif \
             --winAnchorMultimapNmax {params.winanchor_multimap} \
             --outFilterMultimapNmax {params.multimap_nmax} \
             --outFileNamePrefix {params.prefix} \
